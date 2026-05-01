@@ -1,0 +1,19 @@
+{
+  "name": "fhss-staff-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check extract_people.js && node --check parse_docx.js && node --check parse_docx_tables.js && node --check add_genders.js",
+    "extract:people": "node extract_people.js",
+    "people:genders": "node add_genders.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

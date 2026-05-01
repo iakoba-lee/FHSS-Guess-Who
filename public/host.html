@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHSS Staff Matcher - Host</title>
+
+    <!-- BYU Theme Components -->
+    <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <div class="containing-element">
+        <byu-header>
+            <a slot="logo" href="https://www.byu.edu" target="_blank">
+                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+            </a>
+            <span slot="site-title">
+                <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+            </span>
+        </byu-header>
+
+        <main class="page-content">
+            <div class="top-right-tools">
+                <div class="manager-login-corner" id="manager-login-card">
+                    <button type="button" class="small-btn" id="manager-login-toggle" onclick="toggleManagerLogin()">Manager Login</button>
+                    <form class="manager-login-form hidden" id="manager-login-form">
+                        <input type="password" id="manager-password" placeholder="Password" autocomplete="current-password" />
+                        <div class="manager-login-actions">
+                            <button type="submit" class="small-btn">Login</button>
+                            <button type="button" class="small-btn subtle-btn" onclick="toggleManagerLogin(false)">Cancel</button>
+                        </div>
+                        <p id="manager-login-message" class="staff-message"></p>
+                    </form>
+                    <div class="manager-logged-in hidden" id="manager-logged-in">
+                        <span>Manager</span>
+                        <button type="button" class="small-btn subtle-btn" onclick="logoutManager()">Logout</button>
+                    </div>
+                </div>
+                <div class="game-code-corner">
+                    <span>Game Code</span>
+                    <strong id="host-code">------</strong>
+                </div>
+            </div>
+
+            <div class="container">
+
+                <div class="glass-panel" id="host-dashboard">
+                    <h1>Host Dashboard</h1>
+                    
+                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <label style="font-weight: bold; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0;">TIME LIMIT:</label>
+                                <input type="number" id="time-limit" value="30" style="width: 60px; margin-bottom: 0; padding: 0.25rem; text-align: center; background: transparent; border: none; font-weight: bold; color: var(--byu-navy);" />
+                            </div>
+                        <button class="host-control" onclick="startRoundWithTime()" disabled>Start Next Round</button>
+                        <button class="host-control" onclick="postAction('reveal')" style="background: var(--secondary);" disabled>Reveal Answer</button>
+                        <button class="host-control" onclick="postAction('end')" style="background: var(--danger);" disabled>End Game</button>
+                        <button class="host-control subtle-btn" onclick="postAction('reset')" disabled>Reset Game</button>
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 2.5rem;">
+                        <h2 id="round-title">Lobby</h2>
+                        <div id="host-timer-wrapper" class="hidden" style="max-width: 600px; margin: 0 auto;">
+                            <h3 id="timer-display" style="color: var(--secondary); font-size: 2rem; margin-bottom: 0.5rem;"></h3>
+                            <div class="timer-bar-container">
+                                <div id="host-timer-bar" class="timer-bar"></div>
+                            </div>
+                        </div>
+                        <p id="join-text" style="color: var(--text-muted); font-size: 1.25rem;">Players join at <strong id="join-url" style="color: var(--byu-navy);">Starting host...</strong></p>
+                    </div>
+
+                    <div class="grid-2">
+                        <div>
+                            <h3>Current Target</h3>
+                            <div class="photo-container hidden" id="target-photo-container">
+                                <img id="target-photo" src="" alt="Person Photo" />
+                            </div>
+                            <div id="target-info" class="hidden" style="text-align: center;">
+                                <h2 id="target-name" style="margin-bottom: 0.5rem;">Name</h2>
+                                <p id="target-pos" style="color: var(--byu-royal); font-weight: bold; font-size: 1.25rem;">Position</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3>Teams</h3>
+                            <div class="leaderboard" id="leaderboard">
+                                <!-- Teams injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="manager-section hidden" id="manager-section">
+                        <div class="section-header">
+                            <div>
+                                <h2>Staff Manager</h2>
+                                <p>Keep the game roster current as staff join or leave FHSS.</p>
+                            </div>
+                            <button type="button" class="small-btn" onclick="resetStaffForm()">New Staff</button>
+                        </div>
+
+                        <form id="staff-form" class="staff-form">
+                            <input type="hidden" id="staff-id" />
+                            <div class="form-grid">
+                                <label>
+                                    Name
+                                    <input type="text" id="staff-name" required placeholder="Full name" />
+                                </label>
+                                <label>
+                                    Position
+                                    <input type="text" id="staff-position" required placeholder="Role or title" />
+                                </label>
+                                <label>
+                                    Gender for Name Options
+                                    <select id="staff-gender">
+                                        <option value="F">F</option>
+                                        <option value="M">M</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Photo
+                                    <input type="file" id="staff-photo" accept="image/png,image/jpeg,image/gif,image/webp" />
+                                </label>
+                            </div>
+                            <div class="staff-preview hidden" id="staff-preview-wrapper">
+                                <img id="staff-preview" alt="Selected staff preview" />
+                                <button type="button" class="small-btn subtle-btn" onclick="clearStaffPhoto()">Keep Existing Photo</button>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="staff-submit">Add Staff</button>
+                                <button type="button" class="subtle-btn" onclick="resetStaffForm()">Clear</button>
+                            </div>
+                            <p id="staff-message" class="staff-message"></p>
+                        </form>
+
+                        <div class="staff-list" id="staff-list"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <byu-footer></byu-footer>
+    </div>
+
+    <script>
+        let hostCode = sessionStorage.getItem('fhssHostCode') || '';
+        let hostToken = sessionStorage.getItem('fhssHostToken') || '';
+        let currentHostState = 'lobby';
+        let staffPeople = [];
+        let currentPhotoData = null;
+        let managerPassword = sessionStorage.getItem('fhssManagerPassword') || '';
+
+        function hostPayload(extra = {}) {
+            return JSON.stringify({ code: hostCode, host_token: hostToken, ...extra });
+        }
+
+        function managerHeaders() {
+            return managerPassword ? { 'X-Manager-Password': managerPassword } : {};
+        }
+
+        function setManagerMessage(message, isError = false) {
+            const el = document.getElementById('manager-login-message');
+            el.innerText = message;
+            el.classList.toggle('error', isError);
+        }
+
+        function toggleManagerLogin(forceOpen) {
+            const form = document.getElementById('manager-login-form');
+            const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : form.classList.contains('hidden');
+            form.classList.toggle('hidden', !shouldOpen);
+            if (shouldOpen) {
+                document.getElementById('manager-password').focus();
+            } else {
+                setManagerMessage('');
+            }
+        }
+
+        function setManagerAuthenticated(isAuthenticated) {
+            document.getElementById('manager-section').classList.toggle('hidden', !isAuthenticated);
+            document.getElementById('manager-login-toggle').classList.toggle('hidden', isAuthenticated);
+            document.getElementById('manager-login-form').classList.add('hidden');
+            document.getElementById('manager-logged-in').classList.toggle('hidden', !isAuthenticated);
+            if (isAuthenticated) {
+                setManagerMessage('');
+            } else {
+                resetStaffForm();
+            }
+        }
+
+        async function loginManager(password) {
+            const response = await fetch('/api/manager/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ manager_password: password })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to log in.');
+            managerPassword = password;
+            sessionStorage.setItem('fhssManagerPassword', password);
+            setManagerAuthenticated(true);
+            await loadStaff();
+        }
+
+        function logoutManager() {
+            managerPassword = '';
+            sessionStorage.removeItem('fhssManagerPassword');
+            document.getElementById('manager-password').value = '';
+            staffPeople = [];
+            setManagerAuthenticated(false);
+        }
+
+        function updateJoinDisplay() {
+            document.getElementById('host-code').innerText = hostCode || '------';
+            const joinUrl = hostCode ? `${window.location.origin}/?code=${encodeURIComponent(hostCode)}` : 'Starting host...';
+            document.getElementById('join-url').innerText = joinUrl;
+        }
+
+        function setHostControls(enabled) {
+            document.querySelectorAll('.host-control').forEach(button => {
+                button.disabled = !enabled;
+            });
+        }
+
+        async function initHostSession() {
+            const response = await fetch('/api/host/session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code: hostCode, host_token: hostToken })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to create host session.');
+            hostCode = result.game.code;
+            hostToken = result.host_token;
+            sessionStorage.setItem('fhssHostCode', hostCode);
+            sessionStorage.setItem('fhssHostToken', hostToken);
+            updateJoinDisplay();
+            setHostControls(true);
+        }
+
+        function postAction(action) {
+            if (!hostCode || !hostToken) return;
+            fetch('/api/host/' + action, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: hostPayload()
+            });
+        }
+
+        function startRoundWithTime() {
+            if (!hostCode || !hostToken) return;
+            let limit = document.getElementById('time-limit').value || 30;
+            fetch('/api/host/start_round', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: hostPayload({time_limit: limit}) 
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function staffPhotoUrl(person) {
+            return person.image ? '/' + person.image : '';
+        }
+
+        function setStaffMessage(message, isError = false) {
+            const el = document.getElementById('staff-message');
+            el.innerText = message;
+            el.classList.toggle('error', isError);
+        }
+
+        async function loadStaff() {
+            const response = await fetch('/api/people');
+            staffPeople = await response.json();
+            renderStaffList();
+        }
+
+        function renderStaffList() {
+            const list = document.getElementById('staff-list');
+            if (staffPeople.length === 0) {
+                list.innerHTML = '<p class="empty-state">No staff are in the game roster yet.</p>';
+                return;
+            }
+
+            list.innerHTML = staffPeople.map(person => `
+                <div class="staff-row">
+                    <div class="staff-identity">
+                        ${person.image ? `<img src="${staffPhotoUrl(person)}" alt="">` : '<div class="staff-photo-placeholder"></div>'}
+                        <div>
+                            <strong>${escapeHtml(person.name)}</strong>
+                            <span>${escapeHtml(person.position)}</span>
+                        </div>
+                    </div>
+                    <div class="staff-actions">
+                        <button type="button" class="small-btn" onclick="editStaff('${person.id}')">Edit</button>
+                        <button type="button" class="small-btn danger-btn" onclick="deleteStaff('${person.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function resetStaffForm() {
+            document.getElementById('staff-form').reset();
+            document.getElementById('staff-id').value = '';
+            document.getElementById('staff-submit').innerText = 'Add Staff';
+            currentPhotoData = null;
+            document.getElementById('staff-preview-wrapper').classList.add('hidden');
+            document.getElementById('staff-preview').src = '';
+            setStaffMessage('');
+        }
+
+        function editStaff(id) {
+            const person = staffPeople.find(p => p.id === id);
+            if (!person) return;
+            document.getElementById('staff-id').value = person.id;
+            document.getElementById('staff-name').value = person.name || '';
+            document.getElementById('staff-position').value = person.position || '';
+            document.getElementById('staff-gender').value = person.gender || 'F';
+            document.getElementById('staff-submit').innerText = 'Save Staff';
+            currentPhotoData = null;
+            if (person.image) {
+                document.getElementById('staff-preview').src = staffPhotoUrl(person);
+                document.getElementById('staff-preview-wrapper').classList.remove('hidden');
+            } else {
+                document.getElementById('staff-preview-wrapper').classList.add('hidden');
+            }
+            document.getElementById('staff-name').focus();
+            setStaffMessage('Editing ' + person.name);
+        }
+
+        async function deleteStaff(id) {
+            const person = staffPeople.find(p => p.id === id);
+            if (!person || !confirm('Delete ' + person.name + ' from the game roster?')) return;
+            const response = await fetch('/api/people/' + encodeURIComponent(id), {
+                method: 'DELETE',
+                headers: managerHeaders()
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                setStaffMessage(result.error || 'Unable to delete staff.', true);
+                return;
+            }
+            setStaffMessage(person.name + ' was removed.');
+            resetStaffForm();
+            await loadStaff();
+        }
+
+        function clearStaffPhoto() {
+            currentPhotoData = null;
+            document.getElementById('staff-photo').value = '';
+            const id = document.getElementById('staff-id').value;
+            const person = staffPeople.find(p => p.id === id);
+            if (person && person.image) {
+                document.getElementById('staff-preview').src = staffPhotoUrl(person);
+            } else {
+                document.getElementById('staff-preview-wrapper').classList.add('hidden');
+                document.getElementById('staff-preview').src = '';
+            }
+        }
+
+        document.getElementById('staff-photo').addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file) {
+                clearStaffPhoto();
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentPhotoData = {
+                    name: file.name,
+                    dataUrl: reader.result
+                };
+                document.getElementById('staff-preview').src = reader.result;
+                document.getElementById('staff-preview-wrapper').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('staff-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!managerPassword) {
+                setStaffMessage('Manager login is required.', true);
+                return;
+            }
+            const id = document.getElementById('staff-id').value;
+            const existing = staffPeople.find(p => p.id === id);
+            const payload = {
+                name: document.getElementById('staff-name').value.trim(),
+                position: document.getElementById('staff-position').value.trim(),
+                gender: document.getElementById('staff-gender').value,
+                image: existing ? existing.image : '',
+                photo: currentPhotoData
+            };
+
+            const response = await fetch(id ? '/api/people/' + encodeURIComponent(id) : '/api/people', {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json', ...managerHeaders()},
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                setStaffMessage(result.error || 'Unable to save staff.', true);
+                return;
+            }
+
+            setStaffMessage(payload.name + ' was saved.');
+            resetStaffForm();
+            await loadStaff();
+        });
+
+        document.getElementById('manager-login-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            const password = document.getElementById('manager-password').value;
+            setManagerMessage('');
+            if (!password) {
+                setManagerMessage('Enter the manager password.', true);
+                return;
+            }
+            try {
+                await loginManager(password);
+            } catch (error) {
+                setManagerMessage(error.message, true);
+            }
+        });
+
+        setInterval(() => {
+            if (!hostCode || !hostToken) return;
+            fetch('/api/host_state?code=' + encodeURIComponent(hostCode) + '&host_token=' + encodeURIComponent(hostToken))
+                .then(async r => {
+                    const state = await r.json();
+                    if (!r.ok) throw new Error(state.error || 'Unable to load host state.');
+                    return state;
+                })
+                .then(state => {
+                    if (state.status === 'lobby') {
+                        document.getElementById('round-title').innerText = "Lobby";
+                        document.getElementById('host-timer-wrapper').classList.add('hidden');
+                        document.getElementById('join-text').classList.remove('hidden');
+                        document.getElementById('target-photo-container').classList.add('hidden');
+                        document.getElementById('target-info').classList.add('hidden');
+                    } else if (state.status === 'question') {
+                        document.getElementById('round-title').innerText = "Round " + state.round;
+                        document.getElementById('join-text').classList.add('hidden');
+                        
+                        let elapsed = (Date.now() / 1000) - state.start_time;
+                        let remaining = Math.max(0, state.time_limit - elapsed);
+                        document.getElementById('timer-display').innerText = "Time left: " + Math.ceil(remaining) + "s";
+                        document.getElementById('host-timer-wrapper').classList.remove('hidden');
+                        
+                        let pct = (remaining / state.time_limit) * 100;
+                        let timerBar = document.getElementById('host-timer-bar');
+                        timerBar.style.width = pct + "%";
+                        if (pct < 25) {
+                            timerBar.classList.add('warning');
+                        } else {
+                            timerBar.classList.remove('warning');
+                        }
+                        
+                        const photoUrl = state.current_person.image ? '/' + state.current_person.image : '';
+                        document.getElementById('target-photo').src = photoUrl;
+                        document.getElementById('target-photo-container').classList.remove('hidden');
+                        document.getElementById('target-info').classList.add('hidden');
+                    } else if (state.status === 'reveal') {
+                        document.getElementById('host-timer-wrapper').classList.add('hidden');
+                        if (state.current_person) {
+                            document.getElementById('target-info').classList.remove('hidden');
+                            document.getElementById('target-name').innerText = state.current_person.name;
+                            document.getElementById('target-pos').innerText = state.current_person.position;
+                        }
+                        if (currentHostState !== 'reveal') {
+                            confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } });
+                        }
+                    } else if (state.status === 'end') {
+                        document.getElementById('round-title').innerText = "Final Results";
+                        document.getElementById('host-timer-wrapper').classList.add('hidden');
+                        document.getElementById('target-photo-container').classList.add('hidden');
+                        document.getElementById('target-info').classList.add('hidden');
+                        if (currentHostState !== 'end') {
+                            confetti({ particleCount: 400, spread: 200, origin: { y: 0.3 } });
+                        }
+                    }
+                    currentHostState = state.status;
+
+                    // Render teams
+                    const board = document.getElementById('leaderboard');
+                    const sortedTeams = Object.values(state.teams).sort((a,b) => b.score - a.score);
+                    
+                    let newHtml = '';
+                    sortedTeams.forEach(t => {
+                        let statusHtml = '';
+                        if (state.status === 'question') {
+                            if(t.answered) statusHtml = '<span class="status-badge status-answered">Answered</span>';
+                            else statusHtml = '<span class="status-badge status-waiting">Thinking...</span>';
+                        } else if (state.status === 'reveal') {
+                            statusHtml = `<span>${t.correct_name && t.correct_pos ? '⭐⭐' : (t.correct_name || t.correct_pos ? '⭐' : '❌')}</span>`;
+                        }
+
+                        const scoreDisplay = (state.status === 'question') ? '—' : t.score;
+
+                        newHtml += `
+                            <div class="team-row">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span class="team-score">${scoreDisplay}</span>
+                                    <span style="font-size: 1.125rem; font-weight: 600;">${escapeHtml(t.name)}</span>
+                                </div>
+                                ${statusHtml}
+                            </div>
+                        `;
+                    });
+                    
+                    if (board.innerHTML !== newHtml) {
+                        board.innerHTML = newHtml;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('round-title').innerText = error.message;
+                });
+        }, 1000);
+
+        initHostSession()
+            .then(() => {
+                if (managerPassword) {
+                    return loginManager(managerPassword).catch(() => logoutManager());
+                }
+                return null;
+            })
+            .catch(error => {
+                setStaffMessage(error.message, true);
+                document.getElementById('join-url').innerText = 'Host unavailable';
+            });
+    </script>
+</body>
+</html>

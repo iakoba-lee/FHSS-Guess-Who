@@ -1,0 +1,527 @@
+[
+    {
+        "name": "Laura Padilla-Walker",
+        "position": "Dean",
+        "image": "media/image1.jpeg",
+        "gender": "F",
+        "id": "laura-padilla-walker-dean-0"
+    },
+    {
+        "name": "Mikaela Dufur",
+        "position": "Associate Dean Faculty",
+        "image": "media/image2.jpeg",
+        "gender": "F",
+        "id": "mikaela-dufur-associate-dean-faculty-1"
+    },
+    {
+        "name": "Jeff Nokes",
+        "position": "Associate Dean Students",
+        "image": "media/image3.jpeg",
+        "gender": "M",
+        "id": "jeff-nokes-associate-dean-students-2"
+    },
+    {
+        "name": "Niwako Yamawaki",
+        "position": "Associate Dean Belonging",
+        "image": "media/image4.jpg",
+        "gender": "F",
+        "id": "niwako-yamawaki-associate-dean-belonging-3"
+    },
+    {
+        "name": "Stephanie Probst",
+        "position": "Assistant Dean Finance Business Partner",
+        "image": "media/image5.png",
+        "gender": "F",
+        "id": "stephanie-probst-assistant-dean-finance-business-partner-4"
+    },
+    {
+        "name": "Danny Damron",
+        "position": "Assistant Dean Experiential Learning & Professional Development",
+        "image": "media/image6.jpeg",
+        "gender": "M",
+        "id": "danny-damron-assistant-dean-experiential-learning-professional-development-5"
+    },
+    {
+        "name": "Jordan Karpowitz",
+        "position": "Assistant Dean Communication and External Relations",
+        "image": "media/image7.jpeg",
+        "gender": "M",
+        "id": "jordan-karpowitz-assistant-dean-communication-and-external-relations-6"
+    },
+    {
+        "name": "Carina Alleman",
+        "position": "Assistant Dean HR Business Partner",
+        "image": "media/image8.jpeg",
+        "gender": "F",
+        "id": "carina-alleman-assistant-dean-hr-business-partner-7"
+    },
+    {
+        "name": "Joe Olsen",
+        "position": "Assistant Dean Stats and Research Support",
+        "image": "media/image9.jpeg",
+        "gender": "M",
+        "id": "joe-olsen-assistant-dean-stats-and-research-support-8"
+    },
+    {
+        "name": "Sherami Jara",
+        "position": "Assistant Dean Director, Liberal Arts Advisement & Careers",
+        "image": "media/image10.png",
+        "gender": "F",
+        "id": "sherami-jara-assistant-dean-director-liberal-arts-advisement-careers-9"
+    },
+    {
+        "name": "Rachel Dial",
+        "position": "Assistant to the Dean , Events Manager",
+        "image": "media/image11.jpg",
+        "gender": "F",
+        "id": "rachel-dial-assistant-to-the-dean-events-manager-10"
+    },
+    {
+        "name": "Courtney Collingridge",
+        "position": "Dean’s Office Manager",
+        "image": "media/image12.jpg",
+        "gender": "F",
+        "id": "courtney-collingridge-dean-s-office-manager-11"
+    },
+    {
+        "name": "Glenny Riley",
+        "position": "Program Manager Belonging & Diversity",
+        "image": "media/image13.png",
+        "gender": "F",
+        "id": "glenny-riley-program-manager-belonging-diversity-12"
+    },
+    {
+        "name": "Daniel Andersen",
+        "position": "Public Relations Manager",
+        "image": "media/image14.png",
+        "gender": "M",
+        "id": "daniel-andersen-public-relations-manager-13"
+    },
+    {
+        "name": "Matt Michaelis",
+        "position": "Finance Operations Manager",
+        "image": "media/image15.jpeg",
+        "gender": "M",
+        "id": "matt-michaelis-finance-operations-manager-14"
+    },
+    {
+        "name": "Sherami Jara",
+        "position": "Director",
+        "image": "media/image21.jpeg",
+        "gender": "F",
+        "id": "sherami-jara-director-15"
+    },
+    {
+        "name": "Sam Prestwich",
+        "position": "Assistant Director",
+        "image": "media/image22.jpeg",
+        "gender": "M",
+        "id": "sam-prestwich-assistant-director-16"
+    },
+    {
+        "name": "Stefanie Nebeker",
+        "position": "Assistant Director",
+        "image": "media/image23.jpeg",
+        "gender": "F",
+        "id": "stefanie-nebeker-assistant-director-17"
+    },
+    {
+        "name": "Melanie Bailey",
+        "position": "Office Manager",
+        "image": "media/image24.jpeg",
+        "gender": "F",
+        "id": "melanie-bailey-office-manager-18"
+    },
+    {
+        "name": "LeeAnn Broderick",
+        "position": "Office Specialist",
+        "image": "media/image25.jpeg",
+        "gender": "F",
+        "id": "leeann-broderick-office-specialist-19"
+    },
+    {
+        "name": "Amanda Peterson",
+        "position": "Career Director: Anthropology, Economics, Geography, History, & Political Science",
+        "image": "media/image26.jpg",
+        "gender": "F",
+        "id": "amanda-peterson-career-director-anthropology-economics-geography-history-political-science-20"
+    },
+    {
+        "name": "Sara Larson",
+        "position": "Career Director: Family Life, Psychology, & Sociology",
+        "image": "media/image27.jpg",
+        "gender": "F",
+        "id": "sara-larson-career-director-family-life-psychology-sociology-21"
+    },
+    {
+        "name": "Heather Lagrosa-Farr",
+        "position": "Advisor: History, Philosophy, Spanish & Portuguese",
+        "image": "media/image28.jpg",
+        "gender": "F",
+        "id": "heather-lagrosa-farr-advisor-history-philosophy-spanish-portuguese-22"
+    },
+    {
+        "name": "Leah Kockenderfer",
+        "position": "Advisor: Psychology (last names A-O)",
+        "image": "media/image29.jpg",
+        "gender": "F",
+        "id": "leah-kockenderfer-advisor-psychology-last-names-a-o-23"
+    },
+    {
+        "name": "Matt Armstrong",
+        "position": "Advisor: Anthropology, Sociology, Psychology (last names P-Z)",
+        "image": "media/image30.jpg",
+        "gender": "M",
+        "id": "matt-armstrong-advisor-anthropology-sociology-psychology-last-names-p-z-24"
+    },
+    {
+        "name": "Megan Hancock",
+        "position": "Advisor: Economics, Political Science",
+        "image": "media/image31.jpg",
+        "gender": "F",
+        "id": "megan-hancock-advisor-economics-political-science-25"
+    },
+    {
+        "name": "Cielle Davis",
+        "position": "Advisor: Comparative Arts & Letters, French & Italian, German & Russian, and Asian/Near Eastern Languages",
+        "image": "media/image32.jpg",
+        "gender": "F",
+        "id": "cielle-davis-advisor-comparative-arts-letters-french-italian-german-russian-and-asian-near-eastern-languages-26"
+    },
+    {
+        "name": "Jonathan Cook",
+        "position": "Advisor: English, Editing & Publishing, Linguistics",
+        "image": "media/image33.jpg",
+        "gender": "M",
+        "id": "jonathan-cook-advisor-english-editing-publishing-linguistics-27"
+    },
+    {
+        "name": "Sarah Sauerbier",
+        "position": "Advisor: All Teaching Majors",
+        "image": "media/image34.jpg",
+        "gender": "F",
+        "id": "sarah-sauerbier-advisor-all-teaching-majors-28"
+    },
+    {
+        "name": "David McMillan",
+        "position": "Assessment & Data Manager",
+        "image": "media/image35.jpg",
+        "gender": "M",
+        "id": "david-mcmillan-assessment-data-manager-29"
+    },
+    {
+        "name": "Tom Pittman",
+        "position": "Director",
+        "image": "media/image36.jpg",
+        "gender": "M",
+        "id": "tom-pittman-director-30"
+    },
+    {
+        "name": "Amy Lilly",
+        "position": "Office Manager",
+        "image": "media/image37.jpg",
+        "gender": "F",
+        "id": "amy-lilly-office-manager-31"
+    },
+    {
+        "name": "A aron Barnes",
+        "position": "Software Manager",
+        "image": "media/image38.jpeg",
+        "gender": "F",
+        "id": "a-aron-barnes-software-manager-32"
+    },
+    {
+        "name": "Tyler Holland",
+        "position": "Systems Administrator",
+        "image": "media/image39.jpg",
+        "gender": "M",
+        "id": "tyler-holland-systems-administrator-33"
+    },
+    {
+        "name": "Jason Harvey",
+        "position": "Desktop Support Manager",
+        "image": "media/image40.jpg",
+        "gender": "M",
+        "id": "jason-harvey-desktop-support-manager-34"
+    },
+    {
+        "name": "Duncan Morais",
+        "position": "Web Manager",
+        "image": "media/image41.jpeg",
+        "gender": "M",
+        "id": "duncan-morais-web-manager-35"
+    },
+    {
+        "name": "Alden Transfiguracion",
+        "position": "CFHG Web Developer",
+        "image": "media/image42.jpeg",
+        "gender": "M",
+        "id": "alden-transfiguracion-cfhg-web-developer-36"
+    },
+    {
+        "name": "Chris Fox",
+        "position": "Digital Media Manager",
+        "image": "media/image43.jpg",
+        "gender": "M",
+        "id": "chris-fox-digital-media-manager-37"
+    },
+    {
+        "name": "David Fawcett",
+        "position": "Director",
+        "image": "media/image44.png",
+        "gender": "M",
+        "id": "david-fawcett-director-38"
+    },
+    {
+        "name": "Mallory Jackson",
+        "position": "Assistant Director",
+        "image": "media/image45.jpg",
+        "gender": "F",
+        "id": "mallory-jackson-assistant-director-39"
+    },
+    {
+        "name": "Aaron Skabelund",
+        "position": "Director",
+        "image": "media/image48.jpeg",
+        "gender": "M",
+        "id": "aaron-skabelund-director-40"
+    },
+    {
+        "name": "Tricia Schuetzler",
+        "position": "Administrative Assistant",
+        "image": "media/image49.png",
+        "gender": "F",
+        "id": "tricia-schuetzler-administrative-assistant-41"
+    },
+    {
+        "name": "Jay Buckley",
+        "position": "Director",
+        "image": "media/image50.jpeg",
+        "gender": "M",
+        "id": "jay-buckley-director-42"
+    },
+    {
+        "name": "Brendan Rensink",
+        "position": "Associate Director",
+        "image": "media/image51.jpeg",
+        "gender": "M",
+        "id": "brendan-rensink-associate-director-43"
+    },
+    {
+        "name": "Amy Carlin",
+        "position": "Office Manager",
+        "image": "media/image52.jpeg",
+        "gender": "F",
+        "id": "amy-carlin-office-manager-44"
+    },
+    {
+        "name": "Janet Folsom",
+        "position": "Program Administrator",
+        "image": "media/image53.jpeg",
+        "gender": "F",
+        "id": "janet-folsom-program-administrator-45"
+    },
+    {
+        "name": "Anne Ure",
+        "position": "Director",
+        "image": "media/image54.jpeg",
+        "gender": "F",
+        "id": "anne-ure-director-46"
+    },
+    {
+        "name": "Dorie Haws",
+        "position": "Instructional Coach & Master Teacher",
+        "image": "media/image55.png",
+        "gender": "F",
+        "id": "dorie-haws-instructional-coach-master-teacher-47"
+    },
+    {
+        "name": "Amy White",
+        "position": "Instructional Coach & Master Teacher",
+        "image": "media/image56.png",
+        "gender": "F",
+        "id": "amy-white-instructional-coach-master-teacher-48"
+    },
+    {
+        "name": "Whitney Holbrook",
+        "position": "Instructional Coach & Master Teacher",
+        "image": "media/image57.jpeg",
+        "gender": "F",
+        "id": "whitney-holbrook-instructional-coach-master-teacher-49"
+    },
+    {
+        "name": "Mike Searcy",
+        "position": "Chair",
+        "image": "media/image58.jpeg",
+        "gender": "M",
+        "id": "mike-searcy-chair-50"
+    },
+    {
+        "name": "Kristy Christensen",
+        "position": "Office Manager",
+        "image": "media/image59.jpeg",
+        "gender": "F",
+        "id": "kristy-christensen-office-manager-51"
+    },
+    {
+        "name": "Lars Lefgren",
+        "position": "Chair",
+        "image": "media/image60.jpeg",
+        "gender": "M",
+        "id": "lars-lefgren-chair-52"
+    },
+    {
+        "name": "Andrea Sneed",
+        "position": "Office Manager",
+        "image": "media/image61.jpeg",
+        "gender": "F",
+        "id": "andrea-sneed-office-manager-53"
+    },
+    {
+        "name": "Daniel Olsen",
+        "position": "Chair",
+        "image": "media/image62.jpg",
+        "gender": "M",
+        "id": "daniel-olsen-chair-54"
+    },
+    {
+        "name": "Jody Brandow",
+        "position": "Office Manager",
+        "image": "media/image63.png",
+        "gender": "F",
+        "id": "jody-brandow-office-manager-55"
+    },
+    {
+        "name": "Spencer Fluhman",
+        "position": "Chair",
+        "image": "media/image64.jpg",
+        "gender": "M",
+        "id": "spencer-fluhman-chair-56"
+    },
+    {
+        "name": "Josie Fillmore",
+        "position": "Business Manager",
+        "image": "media/image65.jpg",
+        "gender": "F",
+        "id": "josie-fillmore-business-manager-57"
+    },
+    {
+        "name": "Jay Goodliffe",
+        "position": "Chair",
+        "image": "media/image66.jpeg",
+        "gender": "M",
+        "id": "jay-goodliffe-chair-58"
+    },
+    {
+        "name": "Carrie Sorensen",
+        "position": "Office Manager",
+        "image": "media/image67.png",
+        "gender": "F",
+        "id": "carrie-sorensen-office-manager-59"
+    },
+    {
+        "name": "Chad Jensen",
+        "position": "Chair",
+        "image": "media/image68.png",
+        "gender": "M",
+        "id": "chad-jensen-chair-60"
+    },
+    {
+        "name": "Jalene McDonald",
+        "position": "Business Manager",
+        "image": "media/image69.jpeg",
+        "gender": "F",
+        "id": "jalene-mcdonald-business-manager-61"
+    },
+    {
+        "name": "Sandra Shurtleff",
+        "position": "Department Office & Programs Manager",
+        "image": "media/image70.png",
+        "gender": "F",
+        "id": "sandra-shurtleff-department-office-programs-manager-62"
+    },
+    {
+        "name": "Ryan Cottle",
+        "position": "Undergraduate Program Coordinator",
+        "image": "media/image71.jpeg",
+        "gender": "M",
+        "id": "ryan-cottle-undergraduate-program-coordinator-63"
+    },
+    {
+        "name": "Ketra Remund",
+        "position": "Clinical Psych Coordinator",
+        "image": "media/image72.JPG",
+        "gender": "F",
+        "id": "ketra-remund-clinical-psych-coordinator-64"
+    },
+    {
+        "name": "Mandy Johnson",
+        "position": "PhD Pr o g ra m Coordinator & Communications Specialist",
+        "image": "media/image73.jpeg",
+        "gender": "F",
+        "id": "mandy-johnson-phd-pr-o-g-ra-m-coordinator-communications-specialist-65"
+    },
+    {
+        "name": "Erin Holmes",
+        "position": "Director (Chair)",
+        "image": "media/image74.jpeg",
+        "gender": "F",
+        "id": "erin-holmes-director-chair-66"
+    },
+    {
+        "name": "Jan Christensen",
+        "position": "Business Manager",
+        "image": "media/image75.jpeg",
+        "gender": "F",
+        "id": "jan-christensen-business-manager-67"
+    },
+    {
+        "name": "Terri Robertson",
+        "position": "Graduate Program Manager",
+        "image": "media/image76.jpeg",
+        "gender": "F",
+        "id": "terri-robertson-graduate-program-manager-68"
+    },
+    {
+        "name": "Tiffany Townsend",
+        "position": "Events and Human Resources",
+        "image": "media/image77.jpeg",
+        "gender": "F",
+        "id": "tiffany-townsend-events-and-human-resources-69"
+    },
+    {
+        "name": "Stacey Shaw",
+        "position": "Director (Chair)",
+        "image": "media/image78.jpeg",
+        "gender": "F",
+        "id": "stacey-shaw-director-chair-70"
+    },
+    {
+        "name": "Charlene Clark",
+        "position": "Program Administrator",
+        "image": "media/image79.jpeg",
+        "gender": "F",
+        "id": "charlene-clark-program-administrator-71"
+    },
+    {
+        "name": "Rachel Gonzales",
+        "position": "Graduate Program Coordinator",
+        "image": "media/image80.png",
+        "gender": "F",
+        "id": "rachel-gonzales-graduate-program-coordinator-72"
+    },
+    {
+        "name": "Curtis Child",
+        "position": "Chair",
+        "image": "media/image81.jpeg",
+        "gender": "M",
+        "id": "curtis-child-chair-73"
+    },
+    {
+        "name": "Margaret McCabe",
+        "position": "Office Manager",
+        "image": "media/image82.jpeg",
+        "gender": "F",
+        "id": "margaret-mccabe-office-manager-74"
+    }
+]

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHSS Staff Matcher</title>
+
+    <!-- BYU Theme Components -->
+    <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css"
+        media="all">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+    <div class="containing-element">
+        <byu-header>
+            <a slot="logo" href="https://www.byu.edu" target="_blank">
+                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+            </a>
+            <span slot="site-title">
+                <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+            </span>
+        </byu-header>
+
+        <main class="page-content">
+            <div class="container">
+                <div class="glass-panel" id="view-home">
+                    <h1>FHSS Staff Matcher</h1>
+                    <p class="intro-text">Choose how you want to play.</p>
+                    <div class="home-actions">
+                        <button onclick="location.href='/host'">
+                            <span style="font-size: 2rem; margin-bottom: 0.5rem;">🖥️</span>
+                            Host Game
+                        </button>
+                        <button onclick="showPlayerJoin()" style="background: var(--secondary);">
+                            <span style="font-size: 2rem; margin-bottom: 0.5rem;">📱</span>
+                            Join as Player
+                        </button>
+                        <button onclick="startPractice()" class="subtle-btn">
+                            <span style="font-size: 2rem; margin-bottom: 0.5rem;">🎓</span>
+                            Practice Mode
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-panel hidden" id="view-lobby">
+                    <h1>Join Game</h1>
+                    <p style="text-align: center; margin-bottom: 2rem; color: var(--text-muted);">Enter the host code
+                        and your team name.</p>
+                    <input type="text" id="gameCode" placeholder="Host code" maxlength="8"
+                        autocapitalize="characters" />
+                    <input type="text" id="teamName" placeholder="e.g. Tom" />
+                    <button style="width: 100%;" onclick="joinGame()">Join Game</button>
+                    <p id="join-error" class="join-error"></p>
+                    <button
+                        style="width: 100%; margin-top: 1rem; background: transparent; border: 1px solid #cbd5e1; color: var(--text-muted);"
+                        onclick="showView('view-home')">Back</button>
+                </div>
+
+                <div class="glass-panel hidden" id="view-waiting">
+                    <h1 id="waiting-title">Waiting for Host...</h1>
+                    <p style="text-align: center; color: var(--text-muted);">Look at the host screen for instructions.
+                    </p>
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <div class="status-badge status-waiting">Waiting</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel hidden" id="view-question">
+                    <h2>Match the Person!</h2>
+                    <div style="text-align: center; margin-bottom: 1rem;" id="player-timer-wrapper" class="hidden">
+                        <h3 id="player-timer-display" style="color: var(--danger); font-size: 1.5rem;"></h3>
+                        <div class="timer-bar-container">
+                            <div id="player-timer-bar" class="timer-bar"></div>
+                        </div>
+                    </div>
+                    <p style="margin-bottom: 1rem; color: var(--text-muted);">Look at the photo on the host screen and
+                        select the correct Name and Position.</p>
+
+                    <h3 style="margin-top: 2rem;">1. Select Name</h3>
+                    <div class="grid-2" id="options-name"></div>
+
+                    <h3 style="margin-top: 2rem;">2. Select Position</h3>
+                    <div class="grid-2" id="options-pos"></div>
+
+                    <button style="width: 100%; margin-top: 2rem;" onclick="submitAnswer()" id="submit-btn"
+                        disabled>Submit Answer</button>
+                </div>
+
+                <div class="glass-panel hidden" id="view-result">
+                    <h1 id="result-title">Result</h1>
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <h2 id="result-score" style="color: var(--secondary); font-size: 3rem;">+0 pts</h2>
+                        <p id="result-desc"></p>
+                    </div>
+                    <p style="text-align: center; color: var(--text-muted);">Waiting for the next round...</p>
+                </div>
+
+                <div class="glass-panel hidden" id="view-practice">
+                    <h2>Practice Mode</h2>
+                    <div class="photo-container" style="max-width: 250px; margin-bottom: 1rem;">
+                        <img id="prac-photo" src="" alt="Person Photo" />
+                    </div>
+
+                    <h3 style="margin-top: 1rem;">1. Select Name</h3>
+                    <div class="grid-2" id="prac-options-name"></div>
+
+                    <h3 style="margin-top: 1rem;">2. Select Position</h3>
+                    <div class="grid-2" id="prac-options-pos"></div>
+
+                    <div style="text-align: center; margin-top: 1rem; min-height: 2rem;">
+                        <p id="prac-feedback" style="font-weight: bold; font-size: 1.125rem;"></p>
+                    </div>
+
+                    <button style="width: 100%; margin-top: 1rem;" onclick="submitPractice()" id="prac-submit-btn"
+                        disabled>Submit Answer</button>
+                    <button style="width: 100%; margin-top: 1rem; background: var(--secondary);"
+                        onclick="startPractice()" id="prac-next-btn" class="hidden">Next Person</button>
+                    <button
+                        style="width: 100%; margin-top: 1rem; background: transparent; border: 1px solid #cbd5e1; color: var(--text-muted);"
+                        onclick="showView('view-home')">Back Home</button>
+                </div>
+
+                <div class="glass-panel hidden" id="view-end">
+                    <h1>Game Over!</h1>
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <h2 id="final-score" style="color: var(--secondary); font-size: 3rem;">0 pts</h2>
+                        <p>Check the host screen for the final standings!</p>
+                    </div>
+                    <button style="width: 100%;" onclick="location.reload()">Back Home</button>
+                </div>
+            </div>
+        </main>
+
+        <byu-footer></byu-footer>
+    </div>
+
+    <script>
+        let teamId = null;
+        let gameCode = '';
+        let selectedName = null;
+        let selectedPos = null;
+        let currentState = 'lobby';
+        let pollTimer = null;
+
+        let allPeople = [];
+        let pracTarget = null;
+        let pracSelectedName = null;
+        let pracSelectedPos = null;
+
+        function showPlayerJoin() {
+            showView('view-lobby');
+            const code = new URLSearchParams(window.location.search).get('code');
+            if (code) document.getElementById('gameCode').value = code.toUpperCase();
+            document.getElementById('gameCode').focus();
+        }
+
+        function joinGame() {
+            const code = document.getElementById('gameCode').value.trim().toUpperCase();
+            const name = document.getElementById('teamName').value.trim();
+            const errorEl = document.getElementById('join-error');
+            errorEl.innerText = '';
+            if (!code) return errorEl.innerText = 'Enter the host code.';
+            if (!name) return errorEl.innerText = 'Enter a team name.';
+
+            fetch('/api/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code, name: name })
+            }).then(async r => {
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || 'Unable to join game.');
+                return data;
+            }).then(data => {
+                teamId = data.team_id;
+                gameCode = code;
+                currentState = 'lobby';
+                showView('view-waiting');
+                pollState();
+            }).catch(error => {
+                errorEl.innerText = error.message;
+            });
+        }
+
+        function submitAnswer() {
+            if (!selectedName || !selectedPos) return;
+
+            fetch('/api/answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: gameCode,
+                    team_id: teamId,
+                    name: selectedName,
+                    position: selectedPos
+                })
+            }).then(() => {
+                document.getElementById('waiting-title').innerText = "Answer Submitted!";
+                showView('view-waiting');
+            });
+        }
+
+        function selectName(name) {
+            selectedName = name;
+            document.querySelectorAll('#options-name .option-btn').forEach(b => {
+                b.classList.toggle('selected', b.innerText === name);
+            });
+            checkSubmit();
+        }
+
+        function selectPos(pos) {
+            selectedPos = pos;
+            document.querySelectorAll('#options-pos .option-btn').forEach(b => {
+                b.classList.toggle('selected', b.innerText === pos);
+            });
+            checkSubmit();
+        }
+
+        function checkSubmit() {
+            document.getElementById('submit-btn').disabled = !(selectedName && selectedPos);
+        }
+
+        function showView(id) {
+            ['view-home', 'view-lobby', 'view-waiting', 'view-question', 'view-result', 'view-practice', 'view-end'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function startPractice() {
+            if (allPeople.length === 0) {
+                fetch('/api/people').then(r => r.json()).then(data => {
+                    allPeople = data;
+                    renderPracticeRound();
+                });
+            } else {
+                renderPracticeRound();
+            }
+        }
+
+        function renderPracticeRound() {
+            showView('view-practice');
+            if (allPeople.length === 0) {
+                document.getElementById('prac-feedback').innerText = 'No staff are available yet.';
+                document.getElementById('prac-submit-btn').classList.add('hidden');
+                document.getElementById('prac-next-btn').classList.add('hidden');
+                return;
+            }
+            pracTarget = allPeople[Math.floor(Math.random() * allPeople.length)];
+            pracSelectedName = null;
+            pracSelectedPos = null;
+
+            document.getElementById('prac-photo').src = '/' + pracTarget.image;
+            document.getElementById('prac-feedback').innerText = '';
+            document.getElementById('prac-submit-btn').classList.remove('hidden');
+            document.getElementById('prac-submit-btn').disabled = true;
+            document.getElementById('prac-next-btn').classList.add('hidden');
+
+            let targetGender = pracTarget.gender || 'F';
+            let sameGenderPeople = allPeople.filter(p => (p.gender || 'F') === targetGender);
+            let namePool = sameGenderPeople.length >= 4 ? sameGenderPeople : allPeople;
+            let names = [pracTarget.name, ...shuffleUnique(namePool.map(p => p.name).filter(n => n !== pracTarget.name)).slice(0, 3)];
+            let pos = [pracTarget.position, ...shuffleUnique(allPeople.map(p => p.position).filter(p => p !== pracTarget.position)).slice(0, 3)];
+            names = shuffleUnique(names);
+            pos = shuffleUnique(pos);
+
+            const nContainer = document.getElementById('prac-options-name');
+            nContainer.innerHTML = '';
+            names.forEach(n => {
+                nContainer.innerHTML += `<button class="option-btn" onclick="selectPracName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
+            });
+
+            const pContainer = document.getElementById('prac-options-pos');
+            pContainer.innerHTML = '';
+            pos.forEach(p => {
+                pContainer.innerHTML += `<button class="option-btn" onclick="selectPracPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
+            });
+        }
+
+        function shuffleUnique(items) {
+            const unique = [...new Set(items.filter(Boolean))];
+            for (let i = unique.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [unique[i], unique[j]] = [unique[j], unique[i]];
+            }
+            return unique;
+        }
+
+        function selectPracName(name) {
+            pracSelectedName = name;
+            document.querySelectorAll('#prac-options-name .option-btn').forEach(b => {
+                b.classList.toggle('selected', b.innerText === name);
+            });
+            document.getElementById('prac-submit-btn').disabled = !(pracSelectedName && pracSelectedPos);
+        }
+
+        function selectPracPos(pos) {
+            pracSelectedPos = pos;
+            document.querySelectorAll('#prac-options-pos .option-btn').forEach(b => {
+                b.classList.toggle('selected', b.innerText === pos);
+            });
+            document.getElementById('prac-submit-btn').disabled = !(pracSelectedName && pracSelectedPos);
+        }
+
+        function submitPractice() {
+            let correctName = (pracSelectedName === pracTarget.name);
+            let correctPos = (pracSelectedPos === pracTarget.position);
+
+            let feedback = document.getElementById('prac-feedback');
+            if (correctName && correctPos) {
+                feedback.innerText = "Perfect! Both correct.";
+                feedback.style.color = "var(--success)";
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            } else if (correctName) {
+                feedback.innerText = "Name correct, Position wrong! (Correct position: " + pracTarget.position + ")";
+                feedback.style.color = "#F59E0B";
+            } else if (correctPos) {
+                feedback.innerText = "Position correct, Name wrong! (Correct name: " + pracTarget.name + ")";
+                feedback.style.color = "#F59E0B";
+            } else {
+                feedback.innerText = `Both wrong! It's ${pracTarget.name} (${pracTarget.position})`;
+                feedback.style.color = "var(--danger)";
+            }
+
+            document.getElementById('prac-submit-btn').classList.add('hidden');
+            document.getElementById('prac-next-btn').classList.remove('hidden');
+        }
+
+        function pollState() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(() => {
+                if (!teamId || !gameCode) return;
+                fetch('/api/state?code=' + encodeURIComponent(gameCode))
+                    .then(r => r.json())
+                    .then(state => {
+                        if (state.success === false) {
+                            document.getElementById('waiting-title').innerText = state.error || 'Game unavailable';
+                            showView('view-waiting');
+                            return;
+                        }
+
+                        if (state.status === 'question' && currentState === 'question') {
+                            let elapsed = (Date.now() / 1000) - state.start_time;
+                            let remaining = Math.max(0, state.time_limit - elapsed);
+
+                            let timerWrapperEl = document.getElementById('player-timer-wrapper');
+                            let timerEl = document.getElementById('player-timer-display');
+                            let timerBar = document.getElementById('player-timer-bar');
+
+                            timerEl.innerText = Math.ceil(remaining) + "s remaining";
+                            timerWrapperEl.classList.remove('hidden');
+
+                            let pct = (remaining / state.time_limit) * 100;
+                            timerBar.style.width = pct + "%";
+                            if (pct < 25) {
+                                timerBar.classList.add('warning');
+                            } else {
+                                timerBar.classList.remove('warning');
+                            }
+
+                            if (remaining <= 0) {
+                                document.getElementById('submit-btn').disabled = true;
+                                timerEl.innerText = "Time's up!";
+                            }
+                        } else if (state.status !== 'question') {
+                            document.getElementById('player-timer-wrapper').classList.add('hidden');
+                        }
+
+                        if (state.status !== currentState) {
+                            currentState = state.status;
+                            if (state.status === 'question') {
+                                // Reset selection
+                                selectedName = null;
+                                selectedPos = null;
+                                checkSubmit();
+
+                                // Render options
+                                const nContainer = document.getElementById('options-name');
+                                nContainer.innerHTML = '';
+                                state.options_name.forEach(n => {
+                                    nContainer.innerHTML += `<button class="option-btn" onclick="selectName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
+                                });
+
+                                const pContainer = document.getElementById('options-pos');
+                                pContainer.innerHTML = '';
+                                state.options_pos.forEach(p => {
+                                    pContainer.innerHTML += `<button class="option-btn" onclick="selectPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
+                                });
+
+                                showView('view-question');
+                            } else if (state.status === 'reveal') {
+                                const t = state.teams[teamId];
+                                if (!t) {
+                                    document.getElementById('waiting-title').innerText = "Waiting for Host...";
+                                    showView('view-waiting');
+                                    return;
+                                }
+                                document.getElementById('result-title').innerText = "Round Over";
+                                document.getElementById('result-score').innerText = t.score + " pts (Total)";
+                                document.getElementById('result-desc').innerHTML = `
+                                    Name: ${t.correct_name ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'} <br>
+                                    Position: ${t.correct_pos ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'}
+                                `;
+                                if (t.correct_name && t.correct_pos) {
+                                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                                }
+                                showView('view-result');
+                            } else if (state.status === 'lobby') {
+                                document.getElementById('waiting-title').innerText = "Waiting for Game to Start...";
+                                showView('view-waiting');
+                            } else if (state.status === 'end') {
+                                const t = state.teams[teamId];
+                                if (t) {
+                                    document.getElementById('final-score').innerText = t.score + " pts";
+                                }
+                                showView('view-end');
+                            }
+                        }
+                    }).catch(() => {
+                        document.getElementById('waiting-title').innerText = "Connection lost. Waiting for the game...";
+                        showView('view-waiting');
+                    });
+            }, 1000);
+        }
+
+        const initialCode = new URLSearchParams(window.location.search).get('code');
+        if (initialCode) {
+            showPlayerJoin();
+        }
+    </script>
+</body>
+
+</html>
