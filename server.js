@@ -514,13 +514,8 @@ function resolveStaticPath(requestPath) {
     filePath = '/public/index.html';
   } else if (filePath === '/host') {
     filePath = '/public/host.html';
-  } else if (filePath.startsWith('/media/')) {
-    filePath = `/docx_extract/word/${filePath}`;
-    allowedRoot = path.join(ROOT, 'docx_extract', 'word');
-  } else if (!filePath.startsWith('/public/') && !filePath.startsWith('/docx_extract/')) {
+  } else if (!filePath.startsWith('/public/')) {
     filePath = `/public${filePath}`;
-  } else if (filePath.startsWith('/docx_extract/')) {
-    allowedRoot = path.join(ROOT, 'docx_extract');
   }
 
   const fullPath = path.normalize(path.join(ROOT, filePath));
