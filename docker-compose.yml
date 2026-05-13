@@ -1,0 +1,21 @@
+services:
+  faces-game:
+    build: .
+    env_file:
+      - .env
+    container_name: faces-game
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+    volumes:
+      - faces-game-data:/usr/src/app/data
+    networks:
+      - web
+
+volumes:
+  faces-game-data:
+
+networks:
+  web:
+    external: true
