@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="containing-element">
@@ -23,43 +24,22 @@
             </span>
         </byu-header>
 
-        <main class="page-content">
-            <div class="top-right-tools">
-                <div class="manager-login-corner" id="manager-login-card">
-                    <button type="button" class="small-btn" id="manager-login-toggle" onclick="toggleManagerLogin()">Manager Login</button>
-                    <form class="manager-login-form hidden" id="manager-login-form">
-                        <input type="password" id="manager-password" placeholder="Password" autocomplete="current-password" />
-                        <div class="manager-login-actions">
-                            <button type="submit" class="small-btn">Login</button>
-                            <button type="button" class="small-btn subtle-btn" onclick="toggleManagerLogin(false)">Cancel</button>
-                        </div>
-                        <p id="manager-login-message" class="staff-message"></p>
-                    </form>
-                    <div class="manager-logged-in hidden" id="manager-logged-in">
-                        <span>Manager</span>
-                        <button type="button" class="small-btn subtle-btn" onclick="logoutManager()">Logout</button>
-                    </div>
-                </div>
-                <div class="game-code-corner">
-                    <span>Game Code</span>
-                    <strong id="host-code">------</strong>
-                </div>
-            </div>
-
+        <main class="page-content host-page">
+            <div class="host-layout">
             <div class="container">
 
                 <div class="glass-panel" id="host-dashboard">
                     <h1>Host Dashboard</h1>
                     
-                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; justify-content: center; align-items: center; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                <label style="font-weight: bold; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0;">TIME LIMIT:</label>
-                                <input type="number" id="time-limit" value="30" style="width: 60px; margin-bottom: 0; padding: 0.25rem; text-align: center; background: transparent; border: none; font-weight: bold; color: var(--byu-navy);" />
-                            </div>
-                        <button class="host-control" onclick="startRoundWithTime()" disabled>Start Next Round</button>
-                        <button class="host-control" onclick="postAction('reveal')" style="background: var(--secondary);" disabled>Reveal Answer</button>
-                        <button class="host-control" onclick="postAction('end')" style="background: var(--danger);" disabled>End Game</button>
-                        <button class="host-control subtle-btn" onclick="postAction('reset')" disabled>Reset Game</button>
+                    <div class="host-controls">
+                        <div class="host-time-limit">
+                            <label for="time-limit">Time Limit</label>
+                            <input type="number" id="time-limit" value="30" />
+                        </div>
+                        <button class="host-control" onclick="startRoundWithTime()" disabled title="Start Next Round">Start Round</button>
+                        <button class="host-control host-control-reveal" onclick="postAction('reveal')" disabled title="Reveal Answer">Reveal</button>
+                        <button class="host-control host-control-end" onclick="postAction('end')" disabled title="End Game">End Game</button>
+                        <button class="host-control subtle-btn" onclick="postAction('reset')" disabled title="Reset Game">Reset</button>
                     </div>
 
                     <div style="text-align: center; margin-bottom: 2.5rem;">
@@ -70,7 +50,6 @@
                                 <div id="host-timer-bar" class="timer-bar"></div>
                             </div>
                         </div>
-                        <p id="join-text" style="color: var(--text-muted); font-size: 1.25rem;">Players join at <strong id="join-url" style="color: var(--byu-navy);">Starting host...</strong></p>
                     </div>
 
                     <div class="grid-2">
@@ -139,6 +118,37 @@
                         <div class="staff-list" id="staff-list"></div>
                     </div>
                 </div>
+            </div>
+            <aside class="host-sidebar">
+                <div class="top-right-tools">
+                    <div class="manager-login-corner" id="manager-login-card">
+                        <button type="button" class="small-btn" id="manager-login-toggle" onclick="toggleManagerLogin()">Manager Login</button>
+                        <form class="manager-login-form hidden" id="manager-login-form">
+                            <input type="password" id="manager-password" placeholder="Password" autocomplete="current-password" />
+                            <div class="manager-login-actions">
+                                <button type="submit" class="small-btn">Login</button>
+                                <button type="button" class="small-btn subtle-btn" onclick="toggleManagerLogin(false)">Cancel</button>
+                            </div>
+                            <p id="manager-login-message" class="staff-message"></p>
+                        </form>
+                        <div class="manager-logged-in hidden" id="manager-logged-in">
+                            <span>Manager</span>
+                            <button type="button" class="small-btn subtle-btn" onclick="logoutManager()">Logout</button>
+                        </div>
+                    </div>
+                    <div class="game-code-block">
+                        <div class="game-code-corner">
+                            <span>Game Code</span>
+                            <strong id="host-code">------</strong>
+                        </div>
+                        <div class="join-qr-panel" id="join-qr-panel">
+                            <span class="join-qr-label">Scan to join</span>
+                            <div id="join-qr" class="join-qr"></div>
+                        </div>
+                        <p id="join-text" class="join-text">Players join at <strong id="join-url">Starting host...</strong></p>
+                    </div>
+                </div>
+            </aside>
             </div>
         </main>
 
@@ -212,10 +222,38 @@
             setManagerAuthenticated(false);
         }
 
+        let joinQrInstance = null;
+
+        function getJoinUrl() {
+            return hostCode ? `${window.location.origin}/?code=${encodeURIComponent(hostCode)}` : '';
+        }
+
         function updateJoinDisplay() {
             document.getElementById('host-code').innerText = hostCode || '------';
-            const joinUrl = hostCode ? `${window.location.origin}/?code=${encodeURIComponent(hostCode)}` : 'Starting host...';
-            document.getElementById('join-url').innerText = joinUrl;
+            const joinUrl = getJoinUrl();
+            document.getElementById('join-url').innerText = joinUrl || 'Starting host...';
+
+            const qrPanel = document.getElementById('join-qr-panel');
+            const qrContainer = document.getElementById('join-qr');
+            qrContainer.innerHTML = '';
+            joinQrInstance = null;
+
+            if (!joinUrl) {
+                qrPanel.classList.add('hidden');
+                return;
+            }
+
+            qrPanel.classList.remove('hidden');
+            if (typeof QRCode === 'undefined') return;
+
+            joinQrInstance = new QRCode(qrContainer, {
+                text: joinUrl,
+                width: 128,
+                height: 128,
+                colorDark: '#002E5D',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
         }
 
         function setHostControls(enabled) {
