@@ -1,37 +1,51 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
 
 :root {
+  /* BYU brand colors — https://brand.byu.edu/web-theme */
   --byu-navy: #002E5D;
-  --byu-royal: #0057B8;
+  --byu-royal: #0047BA;
+  --byu-white: #FFFFFF;
   --byu-gray: #E6E6E6;
-  --byu-dark-gray: #333333;
-  
+
   --primary: var(--byu-navy);
   --primary-hover: #001e3d;
   --secondary: var(--byu-royal);
-  --secondary-hover: #004494;
-  
-  --bg-color: #f8fafc;
-  --panel-bg: #ffffff;
-  --panel-border: #e2e8f0;
-  --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --success: #059669;
-  --danger: #dc2626;
+  --secondary-hover: #003a94;
+
+  --bg-color: #FAFAFA;
+  --panel-bg: var(--byu-white);
+  --panel-border: var(--byu-gray);
+  --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+
+  --text-main: #141414;
+  --text-muted: #666666;
+
+  --info: #006073;
+  --info-light: #1FB3D1;
+  --success: #006141;
+  --success-light: #10A170;
+  --warning: #8C3A00;
+  --warning-light: #FFB700;
+  --danger: #A3082A;
+  --danger-light: #E61744;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-family: "IBM Plex Sans", Helvetica, Arial, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg-color);
 }
 
 body {
-  background-color: var(--bg-color);
   color: var(--text-main);
+  font-weight: 425;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -49,16 +63,34 @@ body {
 }
 
 /* BYU Header Customizations */
-byu-header [slot="site-title"] a {
-    color: white;
-    text-decoration: none;
-    font-size: 1.5rem;
-    font-weight: 500;
-    line-height: 1;
+byu-header [slot="site-title"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.2;
 }
 
-byu-header [slot="site-title"] a:hover {
-    text-decoration: underline;
+byu-header [slot="site-title"] > a {
+  color: var(--byu-white);
+  text-decoration: none;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+byu-header [slot="site-title"] > a:hover {
+  text-decoration: underline;
+}
+
+byu-header [slot="site-title"] .subtitle a {
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+byu-header [slot="site-title"] .subtitle a:hover {
+  text-decoration: underline;
+  color: var(--byu-white);
 }
 
 .container {
@@ -223,20 +255,13 @@ byu-header [slot="site-title"] a:hover {
   }
 }
 
-.host-control-reveal {
-  background: var(--secondary);
-}
-
-.host-control-reveal:hover:not(:disabled) {
-  background: var(--secondary-hover);
-}
-
 .host-control-end {
   background: var(--danger);
 }
 
 .host-control-end:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--danger);
+  filter: brightness(0.9);
 }
 
 .game-code-block {
@@ -363,8 +388,8 @@ byu-header [slot="site-title"] a:hover {
 }
 
 .manager-logged-in span {
-  color: var(--success);
-  font-weight: 700;
+  color: var(--success-light);
+  font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   font-size: 0.85rem;
@@ -387,7 +412,6 @@ byu-header [slot="site-title"] a:hover {
 }
 
 h1, h2, h3 {
-  font-weight: 700;
   letter-spacing: -0.01em;
   margin-bottom: 1.5rem;
   color: var(--byu-navy);
@@ -395,46 +419,54 @@ h1, h2, h3 {
 
 h1 {
   font-size: 3rem;
+  font-weight: 650;
   text-align: center;
   margin-bottom: 0.5rem;
 }
 
+h2 {
+  font-weight: 650;
+}
+
+h3 {
+  font-weight: 640;
+}
+
 button {
   background: var(--primary);
-  color: white;
+  color: var(--byu-white);
   border: none;
   padding: 0.875rem 1.75rem;
   border-radius: 8px;
   font-size: 1.125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 button:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 button:active {
-  transform: translateY(0);
+  filter: brightness(0.95);
 }
 
 button:disabled {
-  background: #cbd5e1;
-  color: #64748b;
+  background: var(--byu-gray);
+  color: var(--text-muted);
   box-shadow: none;
   cursor: not-allowed;
-  transform: none;
+  filter: none;
 }
 
 input,
 select {
   width: 100%;
   padding: 1rem 1.25rem;
-  background: #ffffff;
+  background: var(--byu-white);
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   color: var(--text-main);
@@ -465,7 +497,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--byu-royal);
-  box-shadow: 0 0 0 3px rgba(0, 87, 184, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 71, 186, 0.2);
 }
 
 .grid-2 {
@@ -498,10 +530,9 @@ select:focus {
 
 .option-btn.selected {
   background: var(--byu-navy);
-  color: white;
+  color: var(--byu-white);
   border-color: var(--byu-navy);
   box-shadow: 0 4px 6px rgba(0, 46, 93, 0.2);
-  transform: scale(1.02);
 }
 
 .photo-container {
@@ -534,7 +565,7 @@ select:focus {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  background: #ffffff;
+  background: var(--byu-white);
   border-radius: 10px;
   border: 1px solid #e2e8f0;
   transition: all 0.2s ease;
@@ -562,20 +593,59 @@ select:focus {
   text-transform: uppercase;
 }
 
-.status-waiting { background: #fef3c7; color: #92400e; }
-.status-answered { background: #dcfce7; color: #166534; }
+.status-waiting {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.player-identity {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 46, 93, 0.06);
+  border: 1px solid rgba(0, 46, 93, 0.1);
+}
+
+.player-identity-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.player-identity-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--byu-royal);
+}
+
+.player-identity-code {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.status-answered {
+  background: rgba(16, 161, 112, 0.15);
+  color: var(--success);
+}
 
 .hidden {
   display: none !important;
 }
 
 .correct-ans {
-  color: var(--success);
-  font-weight: 700;
+  color: var(--success-light);
+  font-weight: 600;
 }
+
 .wrong-ans {
-  color: var(--danger);
-  font-weight: 700;
+  color: var(--danger-light);
+  font-weight: 600;
 }
 
 /* Timer progress bar */
@@ -596,7 +666,7 @@ select:focus {
 }
 
 .timer-bar.warning {
-  background: var(--danger);
+  background: var(--danger-light);
 }
 
 .manager-section {
@@ -652,14 +722,14 @@ select:focus {
 }
 
 .subtle-btn {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
+  background: var(--byu-gray);
+  color: var(--text-main);
+  border: 1px solid var(--panel-border);
   box-shadow: none;
 }
 
 .subtle-btn:hover {
-  background: #e2e8f0;
+  background: #d9d9d9;
 }
 
 .danger-btn {
@@ -667,7 +737,7 @@ select:focus {
 }
 
 .danger-btn:hover {
-  background: #b91c1c;
+  filter: brightness(0.9);
 }
 
 .staff-preview {
@@ -692,7 +762,7 @@ select:focus {
 }
 
 .staff-message.error {
-  color: var(--danger);
+  color: var(--danger-light);
 }
 
 .staff-list {
@@ -709,7 +779,7 @@ select:focus {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.875rem 1rem;
-  background: #ffffff;
+  background: var(--byu-white);
   border: 1px solid #e2e8f0;
   border-radius: 12px;
 }
@@ -759,6 +829,14 @@ byu-header {
   position: relative;
 }
 
+/* Suppress legacy hamburger nav if cached JS injects it */
+#site-nav,
+#nav-menu,
+#nav-overlay,
+.nav-toggle {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
   .home-actions { grid-template-columns: 1fr; }
@@ -789,6 +867,14 @@ byu-header {
   }
   .staff-actions button {
     flex: 1;
+  }
+
+  byu-header [slot="site-title"] > a {
+    font-size: 1.1rem;
+  }
+
+  byu-header [slot="site-title"] .subtitle a {
+    font-size: 0.75rem;
   }
 }
 

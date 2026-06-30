@@ -4,14 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FHSS Staff Matcher</title>
+    <title>FHSS Guess Who</title>
 
     <!-- BYU Theme Components -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
     <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css"
         media="all">
 
     <link rel="stylesheet" href="style.css">
+    <script src="nav.js?v=3" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
@@ -22,14 +26,23 @@
                 <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
             </a>
             <span slot="site-title">
-                <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+                <a href="/">FHSS Guess Who</a>
+                <span class="subtitle">
+                    <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+                </span>
             </span>
+            <byu-menu slot="nav" id="site-menu">
+                <a href="/" data-page="home">Home</a>
+                <a href="/host" data-page="host">Host</a>
+                <a href="/?join=1" data-page="join">Join</a>
+                <a href="/?practice=1" data-page="practice">Practice</a>
+            </byu-menu>
         </byu-header>
 
         <main class="page-content">
             <div class="container">
                 <div class="glass-panel" id="view-home">
-                    <h1>FHSS Staff Matcher</h1>
+                    <h1>FHSS Guess Who</h1>
                     <p class="intro-text">Choose how you want to play.</p>
                     <div class="home-actions">
                         <button onclick="location.href='/host'">
@@ -63,6 +76,11 @@
 
                 <div class="glass-panel hidden" id="view-waiting">
                     <h1 id="waiting-title">Waiting for Host...</h1>
+                    <div class="player-identity">
+                        <p class="player-identity-label">Playing as</p>
+                        <p class="player-identity-name" id="player-display-name"></p>
+                        <p class="player-identity-code">Game <strong id="player-display-code"></strong></p>
+                    </div>
                     <p style="text-align: center; color: var(--text-muted);">Look at the host screen for instructions.
                     </p>
                     <div style="text-align: center; margin-top: 2rem;">
@@ -142,6 +160,7 @@
     <script>
         let teamId = null;
         let gameCode = '';
+        let teamName = '';
         let selectedName = null;
         let selectedPos = null;
         let currentState = 'lobby';
@@ -154,9 +173,58 @@
 
         function showPlayerJoin() {
             showView('view-lobby');
-            const code = new URLSearchParams(window.location.search).get('code');
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const name = params.get('name');
             if (code) document.getElementById('gameCode').value = code.toUpperCase();
+            if (name) document.getElementById('teamName').value = name;
             document.getElementById('gameCode').focus();
+        }
+
+        function updatePlayerUrl() {
+            if (!gameCode || !teamName) return;
+            const params = new URLSearchParams();
+            params.set('code', gameCode);
+            params.set('name', teamName);
+            history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+        }
+
+        function updatePlayerIdentity() {
+            const nameEl = document.getElementById('player-display-name');
+            const codeEl = document.getElementById('player-display-code');
+            if (nameEl) nameEl.textContent = teamName;
+            if (codeEl) codeEl.textContent = gameCode;
+        }
+
+        function onJoinedGame(code, name, data) {
+            teamId = data.team_id;
+            gameCode = code;
+            teamName = name;
+            currentState = '';
+            updatePlayerUrl();
+            updatePlayerIdentity();
+            document.getElementById('waiting-title').innerText = data.rejoined
+                ? `Welcome back, ${name}!`
+                : 'Waiting for Host...';
+            showView('view-waiting');
+            pollState();
+        }
+
+        function joinGameWithCredentials(code, name, errorEl) {
+            return fetch('/api/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code, name: name })
+            }).then(async r => {
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || 'Unable to join game.');
+                return data;
+            }).then(data => {
+                onJoinedGame(code, name, data);
+            }).catch(error => {
+                if (errorEl) errorEl.innerText = error.message;
+                else showPlayerJoin();
+            });
         }
 
         function joinGame() {
@@ -166,24 +234,11 @@
             errorEl.innerText = '';
             if (!code) return errorEl.innerText = 'Enter the host code.';
             if (!name) return errorEl.innerText = 'Enter a team name.';
+            joinGameWithCredentials(code, name, errorEl);
+        }
 
-            fetch('/api/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: code, name: name })
-            }).then(async r => {
-                const data = await r.json();
-                if (!r.ok) throw new Error(data.error || 'Unable to join game.');
-                return data;
-            }).then(data => {
-                teamId = data.team_id;
-                gameCode = code;
-                currentState = 'lobby';
-                showView('view-waiting');
-                pollState();
-            }).catch(error => {
-                errorEl.innerText = error.message;
-            });
+        function reconnectFromUrl(code, name) {
+            joinGameWithCredentials(code.toUpperCase(), name.trim(), null);
         }
 
         function submitAnswer() {
@@ -229,6 +284,7 @@
                 document.getElementById(v).classList.add('hidden');
             });
             document.getElementById(id).classList.remove('hidden');
+            if (window.fhssNav) window.fhssNav.updateActiveLinks();
         }
 
         function startPractice() {
@@ -317,10 +373,10 @@
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             } else if (correctName) {
                 feedback.innerText = "Name correct, Position wrong! (Correct position: " + pracTarget.position + ")";
-                feedback.style.color = "#F59E0B";
+                feedback.style.color = "var(--warning)";
             } else if (correctPos) {
                 feedback.innerText = "Position correct, Name wrong! (Correct name: " + pracTarget.name + ")";
-                feedback.style.color = "#F59E0B";
+                feedback.style.color = "var(--warning)";
             } else {
                 feedback.innerText = `Both wrong! It's ${pracTarget.name} (${pracTarget.position})`;
                 feedback.style.color = "var(--danger)";
@@ -330,105 +386,122 @@
             document.getElementById('prac-next-btn').classList.remove('hidden');
         }
 
-        function pollState() {
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(() => {
-                if (!teamId || !gameCode) return;
-                fetch('/api/state?code=' + encodeURIComponent(gameCode))
-                    .then(r => r.json())
-                    .then(state => {
-                        if (state.success === false) {
-                            document.getElementById('waiting-title').innerText = state.error || 'Game unavailable';
-                            showView('view-waiting');
-                            return;
-                        }
+        function applyGameState(state) {
+            if (state.success === false) {
+                document.getElementById('waiting-title').innerText = state.error || 'Game unavailable';
+                showView('view-waiting');
+                return;
+            }
 
-                        if (state.status === 'question' && currentState === 'question') {
-                            let elapsed = (Date.now() / 1000) - state.start_time;
-                            let remaining = Math.max(0, state.time_limit - elapsed);
+            const team = state.teams && state.teams[teamId];
 
-                            let timerWrapperEl = document.getElementById('player-timer-wrapper');
-                            let timerEl = document.getElementById('player-timer-display');
-                            let timerBar = document.getElementById('player-timer-bar');
+            if (state.status === 'question') {
+                if (team && team.answered) {
+                    document.getElementById('waiting-title').innerText = "Answer Submitted!";
+                    showView('view-waiting');
+                    currentState = 'question';
+                    document.getElementById('player-timer-wrapper').classList.add('hidden');
+                    return;
+                }
 
-                            timerEl.innerText = Math.ceil(remaining) + "s remaining";
-                            timerWrapperEl.classList.remove('hidden');
+                if (currentState !== 'question') {
+                    selectedName = null;
+                    selectedPos = null;
+                    checkSubmit();
 
-                            let pct = (remaining / state.time_limit) * 100;
-                            timerBar.style.width = pct + "%";
-                            if (pct < 25) {
-                                timerBar.classList.add('warning');
-                            } else {
-                                timerBar.classList.remove('warning');
-                            }
-
-                            if (remaining <= 0) {
-                                document.getElementById('submit-btn').disabled = true;
-                                timerEl.innerText = "Time's up!";
-                            }
-                        } else if (state.status !== 'question') {
-                            document.getElementById('player-timer-wrapper').classList.add('hidden');
-                        }
-
-                        if (state.status !== currentState) {
-                            currentState = state.status;
-                            if (state.status === 'question') {
-                                // Reset selection
-                                selectedName = null;
-                                selectedPos = null;
-                                checkSubmit();
-
-                                // Render options
-                                const nContainer = document.getElementById('options-name');
-                                nContainer.innerHTML = '';
-                                state.options_name.forEach(n => {
-                                    nContainer.innerHTML += `<button class="option-btn" onclick="selectName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
-                                });
-
-                                const pContainer = document.getElementById('options-pos');
-                                pContainer.innerHTML = '';
-                                state.options_pos.forEach(p => {
-                                    pContainer.innerHTML += `<button class="option-btn" onclick="selectPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
-                                });
-
-                                showView('view-question');
-                            } else if (state.status === 'reveal') {
-                                const t = state.teams[teamId];
-                                if (!t) {
-                                    document.getElementById('waiting-title').innerText = "Waiting for Host...";
-                                    showView('view-waiting');
-                                    return;
-                                }
-                                document.getElementById('result-title').innerText = "Round Over";
-                                document.getElementById('result-score').innerText = t.score + " pts (Total)";
-                                document.getElementById('result-desc').innerHTML = `
-                                    Name: ${t.correct_name ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'} <br>
-                                    Position: ${t.correct_pos ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'}
-                                `;
-                                if (t.correct_name && t.correct_pos) {
-                                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-                                }
-                                showView('view-result');
-                            } else if (state.status === 'lobby') {
-                                document.getElementById('waiting-title').innerText = "Waiting for Game to Start...";
-                                showView('view-waiting');
-                            } else if (state.status === 'end') {
-                                const t = state.teams[teamId];
-                                if (t) {
-                                    document.getElementById('final-score').innerText = t.score + " pts";
-                                }
-                                showView('view-end');
-                            }
-                        }
-                    }).catch(() => {
-                        document.getElementById('waiting-title').innerText = "Connection lost. Waiting for the game...";
-                        showView('view-waiting');
+                    const nContainer = document.getElementById('options-name');
+                    nContainer.innerHTML = '';
+                    state.options_name.forEach(n => {
+                        nContainer.innerHTML += `<button class="option-btn" onclick="selectName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
                     });
-            }, 1000);
+
+                    const pContainer = document.getElementById('options-pos');
+                    pContainer.innerHTML = '';
+                    state.options_pos.forEach(p => {
+                        pContainer.innerHTML += `<button class="option-btn" onclick="selectPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
+                    });
+
+                    showView('view-question');
+                    currentState = 'question';
+                }
+
+                let elapsed = (Date.now() / 1000) - state.start_time;
+                let remaining = Math.max(0, state.time_limit - elapsed);
+
+                let timerWrapperEl = document.getElementById('player-timer-wrapper');
+                let timerEl = document.getElementById('player-timer-display');
+                let timerBar = document.getElementById('player-timer-bar');
+
+                timerEl.innerText = Math.ceil(remaining) + "s remaining";
+                timerWrapperEl.classList.remove('hidden');
+
+                let pct = (remaining / state.time_limit) * 100;
+                timerBar.style.width = pct + "%";
+                timerBar.classList.toggle('warning', pct < 25);
+
+                if (remaining <= 0) {
+                    document.getElementById('submit-btn').disabled = true;
+                    timerEl.innerText = "Time's up!";
+                }
+                return;
+            }
+
+            document.getElementById('player-timer-wrapper').classList.add('hidden');
+
+            if (state.status !== currentState) {
+                currentState = state.status;
+                if (state.status === 'reveal') {
+                    if (!team) {
+                        document.getElementById('waiting-title').innerText = "Waiting for Host...";
+                        showView('view-waiting');
+                        return;
+                    }
+                    document.getElementById('result-title').innerText = "Round Over";
+                    document.getElementById('result-score').innerText = team.score + " pts (Total)";
+                    document.getElementById('result-desc').innerHTML = `
+                        Name: ${team.correct_name ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'} <br>
+                        Position: ${team.correct_pos ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'}
+                    `;
+                    if (team.correct_name && team.correct_pos) {
+                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    }
+                    showView('view-result');
+                } else if (state.status === 'lobby') {
+                    showView('view-waiting');
+                } else if (state.status === 'end') {
+                    if (team) {
+                        document.getElementById('final-score').innerText = team.score + " pts";
+                    }
+                    showView('view-end');
+                }
+            }
         }
 
-        const initialCode = new URLSearchParams(window.location.search).get('code');
-        if (initialCode) {
+        function fetchGameState() {
+            if (!teamId || !gameCode) return;
+            fetch('/api/state?code=' + encodeURIComponent(gameCode))
+                .then(r => r.json())
+                .then(applyGameState)
+                .catch(() => {
+                    document.getElementById('waiting-title').innerText = "Connection lost. Waiting for the game...";
+                    showView('view-waiting');
+                });
+        }
+
+        function pollState() {
+            if (pollTimer) clearInterval(pollTimer);
+            fetchGameState();
+            pollTimer = setInterval(fetchGameState, 1000);
+        }
+
+        const initialParams = new URLSearchParams(window.location.search);
+        const initialCode = initialParams.get('code');
+        const initialName = initialParams.get('name');
+        if (initialParams.get('practice') === '1') {
+            startPractice();
+        } else if (initialCode && initialName) {
+            reconnectFromUrl(initialCode, initialName);
+        } else if (initialCode || initialParams.get('join') === '1') {
             showPlayerJoin();
         }
     </script>

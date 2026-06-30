@@ -360,6 +360,16 @@ async function handleApi(req, res, url) {
       return sendJson(res, { success: false, error: 'This game has already ended.' }, 409);
     }
 
+    const normalizedName = teamName.toLowerCase();
+    const existingTeamId = Object.entries(game.teams).find(
+      ([, team]) => team.name.toLowerCase() === normalizedName
+    )?.[0];
+
+    if (existingTeamId) {
+      touchGame(game);
+      return sendJson(res, { success: true, team_id: existingTeamId, rejoined: true });
+    }
+
     const teamId = `team_${randomInt(10000, 99999)}`;
     game.teams[teamId] = {
       name: teamName,
@@ -370,7 +380,7 @@ async function handleApi(req, res, url) {
       time_taken: 0
     };
     touchGame(game);
-    return sendJson(res, { success: true, team_id: teamId });
+    return sendJson(res, { success: true, team_id: teamId, rejoined: false });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/answer') {

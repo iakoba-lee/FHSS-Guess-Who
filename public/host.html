@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FHSS Staff Matcher - Host</title>
+    <title>FHSS Guess Who - Host</title>
 
     <!-- BYU Theme Components -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
     <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
 
     <link rel="stylesheet" href="style.css">
+    <script src="nav.js?v=3" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
@@ -20,8 +24,17 @@
                 <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
             </a>
             <span slot="site-title">
-                <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+                <a href="/">FHSS Guess Who</a>
+                <span class="subtitle">
+                    <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+                </span>
             </span>
+            <byu-menu slot="nav" id="site-menu">
+                <a href="/" data-page="home">Home</a>
+                <a href="/host" data-page="host">Host</a>
+                <a href="/?join=1" data-page="join">Join</a>
+                <a href="/?practice=1" data-page="practice">Practice</a>
+            </byu-menu>
         </byu-header>
 
         <main class="page-content host-page">
@@ -37,7 +50,6 @@
                             <input type="number" id="time-limit" value="30" />
                         </div>
                         <button class="host-control" onclick="startRoundWithTime()" disabled title="Start Next Round">Start Round</button>
-                        <button class="host-control host-control-reveal" onclick="postAction('reveal')" disabled title="Reveal Answer">Reveal</button>
                         <button class="host-control host-control-end" onclick="postAction('end')" disabled title="End Game">End Game</button>
                         <button class="host-control subtle-btn" onclick="postAction('reset')" disabled title="Reset Game">Reset</button>
                     </div>
@@ -159,6 +171,7 @@
         let hostCode = sessionStorage.getItem('fhssHostCode') || '';
         let hostToken = sessionStorage.getItem('fhssHostToken') || '';
         let currentHostState = 'lobby';
+        let revealRequestedForRound = false;
         let staffPeople = [];
         let currentPhotoData = null;
         let managerPassword = sessionStorage.getItem('fhssManagerPassword') || '';
@@ -487,12 +500,23 @@
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
                     } else if (state.status === 'question') {
+                        if (currentHostState !== 'question') {
+                            revealRequestedForRound = false;
+                        }
                         document.getElementById('round-title').innerText = "Round " + state.round;
                         document.getElementById('join-text').classList.add('hidden');
                         
                         let elapsed = (Date.now() / 1000) - state.start_time;
                         let remaining = Math.max(0, state.time_limit - elapsed);
-                        document.getElementById('timer-display').innerText = "Time left: " + Math.ceil(remaining) + "s";
+                        if (remaining <= 0) {
+                            document.getElementById('timer-display').innerText = "Time's up!";
+                            if (!revealRequestedForRound) {
+                                revealRequestedForRound = true;
+                                postAction('reveal');
+                            }
+                        } else {
+                            document.getElementById('timer-display').innerText = "Time left: " + Math.ceil(remaining) + "s";
+                        }
                         document.getElementById('host-timer-wrapper').classList.remove('hidden');
                         
                         let pct = (remaining / state.time_limit) * 100;
