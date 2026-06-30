@@ -9,7 +9,9 @@ const ROOT = __dirname;
 const PORT = Number.parseInt(process.env.PORT, 10) || 8080;
 const MANAGER_PASSWORD = process.env.MANAGER_PASSWORD || process.env.MANAGER_KEY;
 const PEOPLE_FILE = path.join(ROOT, 'people.json'); // Permanent storage file for staff roster
+const LEADERBOARD_FILE = path.join(ROOT, 'leaderboard.json');
 const UPLOAD_DIR = path.join(ROOT, 'public', 'uploads');
+const LEADERBOARD_SIZE = 10;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -56,7 +58,9 @@ function createGameState(code = makeGameCode()) {
     code,
     status: 'lobby',
     round: 0,
+    max_rounds: 15,
     current_person: null,
+    used_person_ids: [],
     options_name: [],
     options_pos: [],
     teams: {},
@@ -64,6 +68,7 @@ function createGameState(code = makeGameCode()) {
     host_token: randomToken(40),
     start_time: 0,
     time_limit: 30,
+    scores_recorded: false,
     created_at: Date.now(),
     updated_at: Date.now()
   };
@@ -78,6 +83,27 @@ function pruneExpiredGames() {
 
 function touchGame(game) {
   game.updated_at = Date.now();
+}
+
+function findPlayerSession(teamName) {
+  const normalizedName = String(teamName || '').trim().toLowerCase();
+  if (!normalizedName) return null;
+
+  pruneExpiredGames();
+  let best = null;
+
+  for (const game of games.values()) {
+    const teamId = Object.entries(game.teams).find(
+      ([, team]) => team.name.toLowerCase() === normalizedName
+    )?.[0];
+    if (!teamId) continue;
+
+    if (!best || game.updated_at > best.game.updated_at) {
+      best = { game, teamId };
+    }
+  }
+
+  return best;
 }
 
 function publicGameMeta(game) {
@@ -180,6 +206,53 @@ function savePeople() {
   fs.writeFileSync(PEOPLE_FILE, `${JSON.stringify(people, null, 4)}\n`);
 }
 
+function loadLeaderboard() {
+  try {
+    const raw = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveLeaderboard(entries) {
+  fs.writeFileSync(LEADERBOARD_FILE, `${JSON.stringify(entries, null, 2)}\n`);
+}
+
+function normalizeMaxRounds(value) {
+  const rounds = Number.parseInt(value, 10);
+  return rounds === 30 ? 30 : 15;
+}
+
+function recordLeaderboardScores(game) {
+  const entries = loadLeaderboard();
+  const recordedAt = new Date().toISOString();
+  const rounds = game.max_rounds || 15;
+
+  Object.values(game.teams).forEach((team) => {
+    if (!team.name || team.score <= 0) return;
+    entries.push({
+      team_name: team.name,
+      score: team.score,
+      rounds,
+      recorded_at: recordedAt
+    });
+  });
+
+  entries.sort((a, b) => b.score - a.score || new Date(b.recorded_at) - new Date(a.recorded_at));
+  saveLeaderboard(entries.slice(0, LEADERBOARD_SIZE));
+}
+
+function finalizeGame(game) {
+  if (!game.scores_recorded) {
+    recordLeaderboardScores(game);
+    game.scores_recorded = true;
+  }
+  game.status = 'end';
+  touchGame(game);
+}
+
 function sanitizePerson(input) {
   const name = String(input.name || '').trim();
   const position = String(input.position || '').trim();
@@ -243,6 +316,13 @@ function shuffle(items) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function pickNextPerson(game) {
+  const usedIds = new Set(game.used_person_ids || []);
+  const available = people.filter((person) => !usedIds.has(person.id));
+  if (available.length === 0) return null;
+  return available[Math.floor(Math.random() * available.length)];
 }
 
 function sendJson(res, data, status = 200) {
@@ -321,6 +401,31 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'GET' && url.pathname === '/api/people') {
     return sendJson(res, people);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/reconnect') {
+    const teamName = String(url.searchParams.get('name') || '').trim();
+    if (!teamName) return sendJson(res, { success: false, error: 'Name is required.' }, 400);
+
+    const session = findPlayerSession(teamName);
+    if (!session) {
+      return sendJson(res, {
+        success: false,
+        error: 'No game found for that name. Enter the host code to join.'
+      }, 404);
+    }
+
+    touchGame(session.game);
+    return sendJson(res, {
+      success: true,
+      code: session.game.code,
+      team_id: session.teamId,
+      rejoined: true
+    });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/leaderboard') {
+    return sendJson(res, loadLeaderboard());
   }
 
   const data = await readBody(req);
@@ -422,11 +527,24 @@ async function handleApi(req, res, url) {
     if (people.length === 0) {
       return sendJson(res, { success: false, error: 'Add at least one staff member before starting.' }, 400);
     }
+    if (game.round >= game.max_rounds) {
+      return sendJson(res, { success: false, error: 'All rounds are complete. End or reset the game.' }, 400);
+    }
+
+    game.max_rounds = normalizeMaxRounds(data.max_rounds ?? game.max_rounds);
+    const nextPerson = pickNextPerson(game);
+    if (!nextPerson) {
+      return sendJson(res, {
+        success: false,
+        error: 'All staff members have been shown. End or reset the game.'
+      }, 400);
+    }
 
     game.status = 'question';
     game.round += 1;
     game.time_limit = Number.parseInt(data.time_limit, 10) || 30;
-    game.current_person = people[Math.floor(Math.random() * people.length)];
+    game.current_person = nextPerson;
+    game.used_person_ids.push(nextPerson.id);
     [game.options_name, game.options_pos] = generateOptions(game.current_person);
     game.start_time = Date.now() / 1000;
 
@@ -442,15 +560,28 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'POST' && url.pathname === '/api/host/reveal') {
     const game = requireHost(req, url, data);
-    game.status = 'reveal';
-    touchGame(game);
+    if (game.round >= game.max_rounds) {
+      finalizeGame(game);
+    } else {
+      game.status = 'reveal';
+      touchGame(game);
+    }
     return sendJson(res, { success: true });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/host/settings') {
+    const game = requireHost(req, url, data);
+    if (game.status === 'question') {
+      return sendJson(res, { success: false, error: 'Settings cannot be changed during an active round.' }, 400);
+    }
+    game.max_rounds = normalizeMaxRounds(data.max_rounds ?? game.max_rounds);
+    touchGame(game);
+    return sendJson(res, { success: true, max_rounds: game.max_rounds });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/host/end') {
     const game = requireHost(req, url, data);
-    game.status = 'end';
-    touchGame(game);
+    finalizeGame(game);
     return sendJson(res, { success: true });
   }
 
@@ -459,10 +590,12 @@ async function handleApi(req, res, url) {
     game.status = 'lobby';
     game.round = 0;
     game.current_person = null;
+    game.used_person_ids = [];
     game.options_name = [];
     game.options_pos = [];
     game.teams = {};
     game.start_time = 0;
+    game.scores_recorded = false;
     touchGame(game);
     return sendJson(res, { success: true });
   }
@@ -518,12 +651,14 @@ async function handleApi(req, res, url) {
 
 function resolveStaticPath(requestPath) {
   let filePath = requestPath;
-  let allowedRoot = path.join(ROOT, 'public');
+  const allowedRoot = path.join(ROOT, 'public');
 
   if (filePath === '/' || filePath === '/index.html') {
     filePath = '/public/index.html';
-  } else if (filePath === '/host') {
+  } else if (filePath === '/host' || filePath === '/host.html') {
     filePath = '/public/host.html';
+  } else if (filePath === '/leaderboard' || filePath === '/leaderboard.html') {
+    filePath = '/public/leaderboard.html';
   } else if (!filePath.startsWith('/public/')) {
     filePath = `/public${filePath}`;
   }
@@ -533,8 +668,21 @@ function resolveStaticPath(requestPath) {
   return fullPath;
 }
 
+function resolveStaticPathWithHtmlFallback(requestPath) {
+  const primary = resolveStaticPath(requestPath);
+  if (!primary) return null;
+  if (fs.existsSync(primary)) return primary;
+
+  if (!path.extname(requestPath)) {
+    const htmlPath = resolveStaticPath(`${requestPath}.html`);
+    if (htmlPath && fs.existsSync(htmlPath)) return htmlPath;
+  }
+
+  return primary;
+}
+
 function serveStatic(req, res, url) {
-  const filePath = resolveStaticPath(decodeURIComponent(url.pathname));
+  const filePath = resolveStaticPathWithHtmlFallback(decodeURIComponent(url.pathname));
   if (!filePath) {
     res.writeHead(403);
     return res.end('Forbidden');

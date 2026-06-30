@@ -15,7 +15,7 @@
         media="all">
 
     <link rel="stylesheet" href="style.css">
-    <script src="nav.js?v=3" defer></script>
+    <script src="nav.js?v=4" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
@@ -36,6 +36,7 @@
                 <a href="/host" data-page="host">Host</a>
                 <a href="/?join=1" data-page="join">Join</a>
                 <a href="/?practice=1" data-page="practice">Practice</a>
+                <a href="/leaderboard.html" data-page="leaderboard">Leaderboard</a>
             </byu-menu>
         </byu-header>
 
@@ -53,7 +54,7 @@
                             <span style="font-size: 2rem; margin-bottom: 0.5rem;">📱</span>
                             Join as Player
                         </button>
-                        <button onclick="startPractice()" class="subtle-btn">
+                        <button onclick="enterPractice()" class="subtle-btn">
                             <span style="font-size: 2rem; margin-bottom: 0.5rem;">🎓</span>
                             Practice Mode
                         </button>
@@ -119,25 +120,50 @@
                 </div>
 
                 <div class="glass-panel hidden" id="view-practice">
-                    <h2>Practice Mode</h2>
-                    <div class="photo-container" style="max-width: 250px; margin-bottom: 1rem;">
-                        <img id="prac-photo" src="" alt="Person Photo" />
+                    <div class="practice-header">
+                        <h2>Practice Mode</h2>
+                        <p class="practice-meta" id="practice-meta"></p>
+                        <div class="practice-toolbar">
+                            <button type="button" class="small-btn subtle-btn" id="prac-customize-btn"
+                                onclick="openPracticeCustomize()">Customize Practice</button>
+                        </div>
                     </div>
 
-                    <h3 style="margin-top: 1rem;">1. Select Name</h3>
-                    <div class="grid-2" id="prac-options-name"></div>
-
-                    <h3 style="margin-top: 1rem;">2. Select Position</h3>
-                    <div class="grid-2" id="prac-options-pos"></div>
-
-                    <div style="text-align: center; margin-top: 1rem; min-height: 2rem;">
-                        <p id="prac-feedback" style="font-weight: bold; font-size: 1.125rem;"></p>
+                    <div class="practice-customize hidden" id="practice-customize">
+                        <p class="practice-customize-intro">Choose who you want to quiz yourself on.</p>
+                        <div class="practice-customize-actions">
+                            <button type="button" class="small-btn" onclick="selectAllPracticePeople(true)">Select All</button>
+                            <button type="button" class="small-btn subtle-btn" onclick="selectAllPracticePeople(false)">Clear All</button>
+                            <button type="button" class="small-btn" onclick="useEveryoneForPractice()">Use Everyone</button>
+                            <button type="button" class="small-btn" onclick="applyPracticeSelection()">Start Practice</button>
+                            <button type="button" class="small-btn subtle-btn" onclick="closePracticeCustomize()">Cancel</button>
+                        </div>
+                        <p class="practice-customize-count" id="practice-customize-count"></p>
+                        <p class="practice-customize-error" id="practice-customize-error"></p>
+                        <div class="practice-picker" id="practice-picker"></div>
                     </div>
 
-                    <button style="width: 100%; margin-top: 1rem;" onclick="submitPractice()" id="prac-submit-btn"
-                        disabled>Submit Answer</button>
-                    <button style="width: 100%; margin-top: 1rem; background: var(--secondary);"
-                        onclick="startPractice()" id="prac-next-btn" class="hidden">Next Person</button>
+                    <div id="practice-quiz">
+                        <div class="photo-container" style="max-width: 250px; margin-bottom: 1rem;">
+                            <img id="prac-photo" src="" alt="Person Photo" />
+                        </div>
+
+                        <h3 style="margin-top: 1rem;">1. Select Name</h3>
+                        <div class="grid-2" id="prac-options-name"></div>
+
+                        <h3 style="margin-top: 1rem;">2. Select Position</h3>
+                        <div class="grid-2" id="prac-options-pos"></div>
+
+                        <div style="text-align: center; margin-top: 1rem; min-height: 2rem;">
+                            <p id="prac-feedback" style="font-weight: bold; font-size: 1.125rem;"></p>
+                        </div>
+
+                        <button style="width: 100%; margin-top: 1rem;" onclick="submitPractice()" id="prac-submit-btn"
+                            disabled>Submit Answer</button>
+                        <button style="width: 100%; margin-top: 1rem; background: var(--secondary);"
+                            onclick="nextPracticeRound()" id="prac-next-btn" class="hidden">Next Person</button>
+                    </div>
+
                     <button
                         style="width: 100%; margin-top: 1rem; background: transparent; border: 1px solid #cbd5e1; color: var(--text-muted);"
                         onclick="showView('view-home')">Back Home</button>
@@ -167,9 +193,213 @@
         let pollTimer = null;
 
         let allPeople = [];
+        let pracPoolIds = null;
+        let pracUsedIds = [];
         let pracTarget = null;
         let pracSelectedName = null;
         let pracSelectedPos = null;
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        async function ensurePeopleLoaded() {
+            if (allPeople.length > 0) return allPeople;
+            const response = await fetch('/api/people');
+            allPeople = await response.json();
+            return allPeople;
+        }
+
+        function getPracticePool() {
+            if (!pracPoolIds) return allPeople;
+            return allPeople.filter(person => pracPoolIds.has(person.id));
+        }
+
+        function updatePracticeCustomizeButton() {
+            const button = document.getElementById('prac-customize-btn');
+            if (!button) return;
+            const pool = getPracticePool();
+            if (!pracPoolIds || pool.length === allPeople.length) {
+                button.innerText = 'Customize Practice';
+                return;
+            }
+            button.innerText = `Customize Practice (${pool.length} selected)`;
+        }
+
+        function updatePracticeMeta() {
+            const el = document.getElementById('practice-meta');
+            if (!el) return;
+            if (allPeople.length === 0) {
+                el.innerText = '';
+                return;
+            }
+            const total = allPeople.length;
+            const pool = getPracticePool();
+            const poolNoun = pool.length === 1 ? 'person' : 'people';
+            const seen = pracUsedIds.length;
+            let summary = pracPoolIds && pool.length < total
+                ? `Practicing with ${pool.length} of ${total} ${poolNoun}`
+                : `${total} ${total === 1 ? 'person' : 'people'} in the system`;
+            if (seen > 0) summary += ` · ${seen} seen this session`;
+            el.innerText = summary;
+            updatePracticeCustomizeButton();
+        }
+
+        function updatePracticeCustomizeCount() {
+            const el = document.getElementById('practice-customize-count');
+            if (!el) return;
+            const checked = document.querySelectorAll('#practice-picker input[type="checkbox"]:checked').length;
+            el.innerText = `${checked} of ${allPeople.length} selected`;
+        }
+
+        function renderPracticePicker() {
+            const picker = document.getElementById('practice-picker');
+            if (!picker) return;
+            const selectedIds = pracPoolIds || new Set(allPeople.map(person => person.id));
+            picker.innerHTML = allPeople.map(person => `
+                <label class="practice-picker-row">
+                    <input type="checkbox" value="${escapeHtml(person.id)}" ${selectedIds.has(person.id) ? 'checked' : ''} onchange="updatePracticeCustomizeCount()">
+                    ${person.image
+                        ? `<img src="/${escapeHtml(person.image)}" alt="">`
+                        : '<div class="staff-photo-placeholder"></div>'}
+                    <span class="practice-picker-label">
+                        <strong>${escapeHtml(person.name)}</strong>
+                        <span>${escapeHtml(person.position)}</span>
+                    </span>
+                </label>
+            `).join('');
+            updatePracticeCustomizeCount();
+        }
+
+        function setPracticeCustomizeVisible(isOpen) {
+            document.getElementById('practice-customize').classList.toggle('hidden', !isOpen);
+            document.getElementById('practice-quiz').classList.toggle('hidden', isOpen);
+            document.getElementById('practice-customize-error').innerText = '';
+        }
+
+        async function openPracticeCustomize() {
+            await ensurePeopleLoaded();
+            showView('view-practice');
+            setPracticeCustomizeVisible(true);
+            renderPracticePicker();
+            updatePracticeMeta();
+        }
+
+        function closePracticeCustomize() {
+            setPracticeCustomizeVisible(false);
+            if (getPracticePool().length > 0) {
+                renderPracticeRound();
+            } else {
+                enterPractice();
+            }
+        }
+
+        function selectAllPracticePeople(selectAll) {
+            document.querySelectorAll('#practice-picker input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = selectAll;
+            });
+            updatePracticeCustomizeCount();
+        }
+
+        function applyPracticeSelection() {
+            const checked = [...document.querySelectorAll('#practice-picker input[type="checkbox"]:checked')]
+                .map(checkbox => checkbox.value);
+            const errorEl = document.getElementById('practice-customize-error');
+            if (checked.length === 0) {
+                errorEl.innerText = 'Select at least one person to practice with.';
+                return;
+            }
+            errorEl.innerText = '';
+            pracPoolIds = checked.length === allPeople.length ? null : new Set(checked);
+            pracUsedIds = [];
+            setPracticeCustomizeVisible(false);
+            renderPracticeRound();
+        }
+
+        function useEveryoneForPractice() {
+            pracPoolIds = null;
+            selectAllPracticePeople(true);
+            pracUsedIds = [];
+            setPracticeCustomizeVisible(false);
+            renderPracticeRound();
+        }
+
+        async function enterPractice(options = {}) {
+            const { resetSession = true } = options;
+            await ensurePeopleLoaded();
+            if (resetSession) pracUsedIds = [];
+            setPracticeCustomizeVisible(false);
+            showView('view-practice');
+            if (!window.location.search.includes('practice=1')) {
+                history.replaceState(null, '', '/?practice=1');
+                if (window.fhssNav) window.fhssNav.updateActiveLinks();
+            }
+            renderPracticeRound();
+        }
+
+        function startPractice() {
+            return enterPractice({ resetSession: true });
+        }
+
+        function nextPracticeRound() {
+            renderPracticeRound();
+        }
+
+        function renderPracticeRound() {
+            updatePracticeMeta();
+            const pool = getPracticePool();
+            if (allPeople.length === 0 || pool.length === 0) {
+                document.getElementById('prac-feedback').innerText = pool.length === 0 && allPeople.length > 0
+                    ? 'No people selected. Use Customize Practice to choose who to study.'
+                    : 'No staff are available yet.';
+                document.getElementById('prac-submit-btn').classList.add('hidden');
+                document.getElementById('prac-next-btn').classList.add('hidden');
+                return;
+            }
+
+            let available = pool.filter(person => !pracUsedIds.includes(person.id));
+            if (available.length === 0) {
+                pracUsedIds = [];
+                available = pool;
+            }
+            pracTarget = available[Math.floor(Math.random() * available.length)];
+            pracUsedIds.push(pracTarget.id);
+            updatePracticeMeta();
+            pracSelectedName = null;
+            pracSelectedPos = null;
+
+            document.getElementById('prac-photo').src = pracTarget.image ? '/' + pracTarget.image : '';
+            document.getElementById('prac-feedback').innerText = '';
+            document.getElementById('prac-submit-btn').classList.remove('hidden');
+            document.getElementById('prac-submit-btn').disabled = true;
+            document.getElementById('prac-next-btn').classList.add('hidden');
+
+            const targetGender = pracTarget.gender || 'F';
+            const sameGenderPeople = allPeople.filter(person => (person.gender || 'F') === targetGender);
+            const namePool = sameGenderPeople.length >= 4 ? sameGenderPeople : allPeople;
+            let names = [pracTarget.name, ...shuffleUnique(namePool.map(person => person.name).filter(name => name !== pracTarget.name)).slice(0, 3)];
+            let pos = [pracTarget.position, ...shuffleUnique(allPeople.map(person => person.position).filter(position => position !== pracTarget.position)).slice(0, 3)];
+            names = shuffleUnique(names);
+            pos = shuffleUnique(pos);
+
+            const nContainer = document.getElementById('prac-options-name');
+            nContainer.innerHTML = '';
+            names.forEach(name => {
+                nContainer.innerHTML += `<button class="option-btn" onclick="selectPracName('${name.replace(/'/g, "\\'")}')">${name}</button>`;
+            });
+
+            const pContainer = document.getElementById('prac-options-pos');
+            pContainer.innerHTML = '';
+            pos.forEach(position => {
+                pContainer.innerHTML += `<button class="option-btn" onclick="selectPracPos('${position.replace(/'/g, "\\'")}')">${position}</button>`;
+            });
+        }
 
         function showPlayerJoin() {
             showView('view-lobby');
@@ -182,9 +412,8 @@
         }
 
         function updatePlayerUrl() {
-            if (!gameCode || !teamName) return;
+            if (!teamName) return;
             const params = new URLSearchParams();
-            params.set('code', gameCode);
             params.set('name', teamName);
             history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
         }
@@ -237,8 +466,22 @@
             joinGameWithCredentials(code, name, errorEl);
         }
 
-        function reconnectFromUrl(code, name) {
-            joinGameWithCredentials(code.toUpperCase(), name.trim(), null);
+        function reconnectByName(name) {
+            const trimmedName = name.trim();
+            fetch('/api/reconnect?name=' + encodeURIComponent(trimmedName))
+                .then(async r => {
+                    const data = await r.json();
+                    if (!r.ok) throw new Error(data.error || 'Unable to reconnect.');
+                    return data;
+                })
+                .then(data => {
+                    onJoinedGame(data.code, trimmedName, data);
+                })
+                .catch(error => {
+                    showPlayerJoin();
+                    document.getElementById('teamName').value = trimmedName;
+                    document.getElementById('join-error').innerText = error.message;
+                });
         }
 
         function submitAnswer() {
@@ -285,56 +528,6 @@
             });
             document.getElementById(id).classList.remove('hidden');
             if (window.fhssNav) window.fhssNav.updateActiveLinks();
-        }
-
-        function startPractice() {
-            if (allPeople.length === 0) {
-                fetch('/api/people').then(r => r.json()).then(data => {
-                    allPeople = data;
-                    renderPracticeRound();
-                });
-            } else {
-                renderPracticeRound();
-            }
-        }
-
-        function renderPracticeRound() {
-            showView('view-practice');
-            if (allPeople.length === 0) {
-                document.getElementById('prac-feedback').innerText = 'No staff are available yet.';
-                document.getElementById('prac-submit-btn').classList.add('hidden');
-                document.getElementById('prac-next-btn').classList.add('hidden');
-                return;
-            }
-            pracTarget = allPeople[Math.floor(Math.random() * allPeople.length)];
-            pracSelectedName = null;
-            pracSelectedPos = null;
-
-            document.getElementById('prac-photo').src = '/' + pracTarget.image;
-            document.getElementById('prac-feedback').innerText = '';
-            document.getElementById('prac-submit-btn').classList.remove('hidden');
-            document.getElementById('prac-submit-btn').disabled = true;
-            document.getElementById('prac-next-btn').classList.add('hidden');
-
-            let targetGender = pracTarget.gender || 'F';
-            let sameGenderPeople = allPeople.filter(p => (p.gender || 'F') === targetGender);
-            let namePool = sameGenderPeople.length >= 4 ? sameGenderPeople : allPeople;
-            let names = [pracTarget.name, ...shuffleUnique(namePool.map(p => p.name).filter(n => n !== pracTarget.name)).slice(0, 3)];
-            let pos = [pracTarget.position, ...shuffleUnique(allPeople.map(p => p.position).filter(p => p !== pracTarget.position)).slice(0, 3)];
-            names = shuffleUnique(names);
-            pos = shuffleUnique(pos);
-
-            const nContainer = document.getElementById('prac-options-name');
-            nContainer.innerHTML = '';
-            names.forEach(n => {
-                nContainer.innerHTML += `<button class="option-btn" onclick="selectPracName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
-            });
-
-            const pContainer = document.getElementById('prac-options-pos');
-            pContainer.innerHTML = '';
-            pos.forEach(p => {
-                pContainer.innerHTML += `<button class="option-btn" onclick="selectPracPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
-            });
         }
 
         function shuffleUnique(items) {
@@ -498,9 +691,9 @@
         const initialCode = initialParams.get('code');
         const initialName = initialParams.get('name');
         if (initialParams.get('practice') === '1') {
-            startPractice();
-        } else if (initialCode && initialName) {
-            reconnectFromUrl(initialCode, initialName);
+            enterPractice();
+        } else if (initialName) {
+            reconnectByName(initialName);
         } else if (initialCode || initialParams.get('join') === '1') {
             showPlayerJoin();
         }

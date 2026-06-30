@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
 
     <link rel="stylesheet" href="style.css">
-    <script src="nav.js?v=3" defer></script>
+    <script src="nav.js?v=4" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
@@ -34,6 +34,7 @@
                 <a href="/host" data-page="host">Host</a>
                 <a href="/?join=1" data-page="join">Join</a>
                 <a href="/?practice=1" data-page="practice">Practice</a>
+                <a href="/leaderboard.html" data-page="leaderboard">Leaderboard</a>
             </byu-menu>
         </byu-header>
 
@@ -45,17 +46,19 @@
                     <h1>Host Dashboard</h1>
                     
                     <div class="host-controls">
-                        <div class="host-time-limit">
-                            <label for="time-limit">Time Limit</label>
-                            <input type="number" id="time-limit" value="30" />
-                        </div>
-                        <button class="host-control" onclick="startRoundWithTime()" disabled title="Start Next Round">Start Round</button>
+                        <button type="button" class="host-control subtle-btn" id="edit-game-btn" onclick="openGameSettingsModal()" disabled title="Edit Game Settings">Edit Game</button>
+                        <button class="host-control" id="start-round-btn" onclick="startRoundWithTime()" disabled title="Start Next Round">Start Round</button>
+                        <button class="host-control host-control-reveal" onclick="postAction('reveal')" disabled title="Reveal Answer">Reveal</button>
                         <button class="host-control host-control-end" onclick="postAction('end')" disabled title="End Game">End Game</button>
-                        <button class="host-control subtle-btn" onclick="postAction('reset')" disabled title="Reset Game">Reset</button>
+                        <button class="host-control subtle-btn" onclick="resetAndNewGame()" disabled title="Reset Game">Reset</button>
                     </div>
 
                     <div style="text-align: center; margin-bottom: 2.5rem;">
                         <h2 id="round-title">Lobby</h2>
+                        <div id="lobby-start-prompt" class="lobby-start-prompt hidden">
+                            <p>Share the game code so players can join. Start when everyone is ready.</p>
+                            <button type="button" class="host-control" id="lobby-start-game-btn" onclick="startRoundWithTime()">Start Game</button>
+                        </div>
                         <div id="host-timer-wrapper" class="hidden" style="max-width: 600px; margin: 0 auto;">
                             <h3 id="timer-display" style="color: var(--secondary); font-size: 2rem; margin-bottom: 0.5rem;"></h3>
                             <div class="timer-bar-container">
@@ -148,6 +151,12 @@
                             <button type="button" class="small-btn subtle-btn" onclick="logoutManager()">Logout</button>
                         </div>
                     </div>
+                    <div class="staff-roster-block">
+                        <div class="staff-roster-corner">
+                            <span>Staff in System</span>
+                            <strong id="staff-count">—</strong>
+                        </div>
+                    </div>
                     <div class="game-code-block">
                         <div class="game-code-corner">
                             <span>Game Code</span>
@@ -167,14 +176,62 @@
         <byu-footer></byu-footer>
     </div>
 
+    <div id="game-settings-modal" class="game-settings-modal hidden" role="dialog" aria-modal="true" aria-labelledby="game-settings-title">
+        <div class="game-settings-panel glass-panel">
+            <h2 id="game-settings-title">Game Settings</h2>
+            <p class="game-settings-hint" id="game-settings-hint">Set the time limit and number of rounds, then open the lobby for players to join.</p>
+            <div class="game-settings-fields">
+                <div class="host-time-limit">
+                    <label for="time-limit">Time Limit</label>
+                    <input type="number" id="time-limit" value="30" min="5" max="120" />
+                </div>
+                <div class="host-time-limit">
+                    <label for="round-count">Rounds</label>
+                    <select id="round-count">
+                        <option value="15" selected>15</option>
+                        <option value="30">30</option>
+                    </select>
+                </div>
+            </div>
+            <div class="game-settings-actions">
+                <button type="button" class="host-control" id="modal-open-lobby">Open Lobby</button>
+                <button type="button" class="host-control subtle-btn hidden" id="modal-save-settings">Save Settings</button>
+                <button type="button" class="host-control subtle-btn hidden" id="modal-cancel-settings">Cancel</button>
+            </div>
+            <p id="game-settings-message" class="staff-message"></p>
+        </div>
+    </div>
+
     <script>
         let hostCode = sessionStorage.getItem('fhssHostCode') || '';
         let hostToken = sessionStorage.getItem('fhssHostToken') || '';
         let currentHostState = 'lobby';
+        let currentRound = 0;
         let revealRequestedForRound = false;
+        let pendingMaxRounds = null;
         let staffPeople = [];
         let currentPhotoData = null;
         let managerPassword = sessionStorage.getItem('fhssManagerPassword') || '';
+
+        function updateStaffCountDisplay(count) {
+            const el = document.getElementById('staff-count');
+            if (!el) return;
+            if (count === null || count === undefined) {
+                el.innerText = '—';
+                return;
+            }
+            el.innerText = String(count);
+        }
+
+        async function loadRosterCount() {
+            try {
+                const response = await fetch('/api/people');
+                const data = await response.json();
+                updateStaffCountDisplay(Array.isArray(data) ? data.length : 0);
+            } catch (error) {
+                updateStaffCountDisplay(null);
+            }
+        }
 
         function hostPayload(extra = {}) {
             return JSON.stringify({ code: hostCode, host_token: hostToken, ...extra });
@@ -270,9 +327,108 @@
         }
 
         function setHostControls(enabled) {
-            document.querySelectorAll('.host-control').forEach(button => {
+            document.querySelectorAll('.host-controls .host-control').forEach(button => {
                 button.disabled = !enabled;
             });
+        }
+
+        function setEditGameEnabled(enabled) {
+            const editBtn = document.getElementById('edit-game-btn');
+            if (editBtn) editBtn.disabled = !enabled;
+        }
+
+        function setGameSettingsMessage(message, isError = false) {
+            const el = document.getElementById('game-settings-message');
+            if (!el) return;
+            el.innerText = message;
+            el.classList.toggle('error', isError);
+        }
+
+        function isSettingsModalOpen() {
+            const modal = document.getElementById('game-settings-modal');
+            return modal && !modal.classList.contains('hidden');
+        }
+
+        function openGameSettingsModal(options = {}) {
+            const initial = options.initial === true;
+            const modal = document.getElementById('game-settings-modal');
+            const hint = document.getElementById('game-settings-hint');
+            const openLobbyBtn = document.getElementById('modal-open-lobby');
+            const saveBtn = document.getElementById('modal-save-settings');
+            const cancelBtn = document.getElementById('modal-cancel-settings');
+
+            setGameSettingsMessage('');
+            hint.innerText = initial
+                ? 'Set the time limit and number of rounds, then open the lobby for players to join.'
+                : 'Update settings between rounds. Changes apply to the next round.';
+
+            openLobbyBtn.classList.toggle('hidden', !initial);
+            saveBtn.classList.toggle('hidden', initial);
+            cancelBtn.classList.toggle('hidden', initial);
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeGameSettingsModal() {
+            document.getElementById('game-settings-modal').classList.add('hidden');
+            setGameSettingsMessage('');
+        }
+
+        function getSelectedMaxRounds() {
+            return document.getElementById('round-count').value === '30' ? 30 : 15;
+        }
+
+        function syncMaxRoundsSelect(maxRounds) {
+            if (isSettingsModalOpen()) return;
+            const select = document.getElementById('round-count');
+            const serverVal = maxRounds === 30 ? '30' : '15';
+            if (pendingMaxRounds !== null) {
+                if (serverVal === String(pendingMaxRounds)) {
+                    pendingMaxRounds = null;
+                    select.value = serverVal;
+                } else {
+                    select.value = String(pendingMaxRounds);
+                    return;
+                }
+            } else {
+                select.value = serverVal;
+            }
+        }
+
+        async function updateGameSettings() {
+            if (!hostCode || !hostToken) return false;
+            const selected = getSelectedMaxRounds();
+            pendingMaxRounds = selected;
+            const response = await fetch('/api/host/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: hostPayload({ max_rounds: selected })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                pendingMaxRounds = null;
+            }
+            return response.ok;
+        }
+
+        async function openLobbyFromModal() {
+            setGameSettingsMessage('');
+            const saved = await updateGameSettings();
+            if (!saved) {
+                setGameSettingsMessage('Could not save settings. Restart the server and try again.', true);
+                return;
+            }
+            closeGameSettingsModal();
+        }
+
+        async function saveGameSettingsFromModal() {
+            setGameSettingsMessage('');
+            const saved = await updateGameSettings();
+            if (!saved) {
+                setGameSettingsMessage('Could not save settings during an active round.', true);
+                return;
+            }
+            closeGameSettingsModal();
         }
 
         async function initHostSession() {
@@ -289,6 +445,10 @@
             sessionStorage.setItem('fhssHostToken', hostToken);
             updateJoinDisplay();
             setHostControls(true);
+            setEditGameEnabled(true);
+            if ((result.game.round || 0) === 0 && result.game.status === 'lobby') {
+                openGameSettingsModal({ initial: true });
+            }
         }
 
         function postAction(action) {
@@ -300,15 +460,47 @@
             });
         }
 
+        async function resetAndNewGame() {
+            if (!hostCode || !hostToken) return;
+            const response = await fetch('/api/host/reset', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: hostPayload()
+            });
+            if (!response.ok) return;
+            pendingMaxRounds = null;
+            revealRequestedForRound = false;
+            currentRound = 0;
+            currentHostState = 'lobby';
+            openGameSettingsModal({ initial: true });
+        }
+
         function startRoundWithTime() {
             if (!hostCode || !hostToken) return;
             let limit = document.getElementById('time-limit').value || 30;
             fetch('/api/host/start_round', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'},
-                body: hostPayload({time_limit: limit}) 
+                body: hostPayload({
+                    time_limit: limit,
+                    max_rounds: getSelectedMaxRounds()
+                }) 
             });
         }
+
+        function updateLobbyStartPrompt(state) {
+            const showLobbyStart = state.status === 'lobby' && (state.round || 0) === 0;
+            const prompt = document.getElementById('lobby-start-prompt');
+            const startRoundBtn = document.getElementById('start-round-btn');
+            const lobbyStartBtn = document.getElementById('lobby-start-game-btn');
+            if (prompt) prompt.classList.toggle('hidden', !showLobbyStart);
+            if (startRoundBtn) startRoundBtn.classList.toggle('hidden', showLobbyStart);
+            if (lobbyStartBtn) lobbyStartBtn.disabled = !hostCode || !hostToken;
+        }
+
+        document.getElementById('modal-open-lobby').addEventListener('click', openLobbyFromModal);
+        document.getElementById('modal-save-settings').addEventListener('click', saveGameSettingsFromModal);
+        document.getElementById('modal-cancel-settings').addEventListener('click', closeGameSettingsModal);
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({
@@ -333,6 +525,7 @@
         async function loadStaff() {
             const response = await fetch('/api/people');
             staffPeople = await response.json();
+            updateStaffCountDisplay(staffPeople.length);
             renderStaffList();
         }
 
@@ -493,17 +686,23 @@
                     return state;
                 })
                 .then(state => {
+                    syncMaxRoundsSelect(state.max_rounds || 15);
+                    setEditGameEnabled(state.status !== 'question');
+                    currentRound = state.round || 0;
+
                     if (state.status === 'lobby') {
-                        document.getElementById('round-title').innerText = "Lobby";
+                        document.getElementById('round-title').innerText = `Lobby · ${state.max_rounds || getSelectedMaxRounds()} rounds`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         document.getElementById('join-text').classList.remove('hidden');
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
+                        updateLobbyStartPrompt(state);
                     } else if (state.status === 'question') {
+                        updateLobbyStartPrompt({ status: state.status, round: state.round });
                         if (currentHostState !== 'question') {
                             revealRequestedForRound = false;
                         }
-                        document.getElementById('round-title').innerText = "Round " + state.round;
+                        document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()}`;
                         document.getElementById('join-text').classList.add('hidden');
                         
                         let elapsed = (Date.now() / 1000) - state.start_time;
@@ -533,6 +732,8 @@
                         document.getElementById('target-photo-container').classList.remove('hidden');
                         document.getElementById('target-info').classList.add('hidden');
                     } else if (state.status === 'reveal') {
+                        updateLobbyStartPrompt({ status: state.status, round: state.round });
+                        document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()} · Results`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         if (state.current_person) {
                             document.getElementById('target-info').classList.remove('hidden');
@@ -543,7 +744,8 @@
                             confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } });
                         }
                     } else if (state.status === 'end') {
-                        document.getElementById('round-title').innerText = "Final Results";
+                        updateLobbyStartPrompt({ status: state.status, round: state.round });
+                        document.getElementById('round-title').innerText = `Final Results · ${state.max_rounds || getSelectedMaxRounds()} rounds`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
@@ -590,6 +792,7 @@
         }, 1000);
 
         initHostSession()
+            .then(() => loadRosterCount())
             .then(() => {
                 if (managerPassword) {
                     return loginManager(managerPassword).catch(() => logoutManager());

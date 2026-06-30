@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHSS Guess Who - Leaderboard</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+    <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="nav.js?v=4" defer></script>
+</head>
+<body>
+    <div class="containing-element">
+        <byu-header>
+            <a slot="logo" href="https://www.byu.edu" target="_blank">
+                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+            </a>
+            <span slot="site-title">
+                <a href="/">FHSS Guess Who</a>
+                <span class="subtitle">
+                    <a href="https://fhsscomputing.byu.edu/">FHSS Computing Services</a>
+                </span>
+            </span>
+            <byu-menu slot="nav" id="site-menu">
+                <a href="/" data-page="home">Home</a>
+                <a href="/host" data-page="host">Host</a>
+                <a href="/?join=1" data-page="join">Join</a>
+                <a href="/?practice=1" data-page="practice">Practice</a>
+                <a href="/leaderboard.html" data-page="leaderboard">Leaderboard</a>
+            </byu-menu>
+        </byu-header>
+
+        <main class="page-content leaderboard-page">
+            <div class="container">
+                <div class="glass-panel">
+                    <h1>All-Time Top 10</h1>
+                    <p class="intro-text">Highest team scores from completed games.</p>
+                    <div class="top-scores-board" id="top-scores-board">
+                        <p class="empty-state">Loading scores...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <byu-footer></byu-footer>
+    </div>
+
+    <script>
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function formatLeaderboardDate(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        async function loadTopScores() {
+            const board = document.getElementById('top-scores-board');
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const entries = await response.json();
+
+                if (!Array.isArray(entries) || entries.length === 0) {
+                    board.innerHTML = '<p class="empty-state">No scores recorded yet.</p>';
+                    return;
+                }
+
+                board.innerHTML = entries.map((entry, index) => `
+                    <div class="top-score-row">
+                        <span class="top-score-rank">#${index + 1}</span>
+                        <div class="top-score-details">
+                            <strong>${escapeHtml(entry.team_name)}</strong>
+                            <span>${entry.rounds || 15} rounds · ${formatLeaderboardDate(entry.recorded_at)}</span>
+                        </div>
+                        <span class="top-score-value">${Number(entry.score || 0).toLocaleString()}</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                board.innerHTML = '<p class="empty-state error">Unable to load leaderboard.</p>';
+            }
+        }
+
+        loadTopScores();
+    </script>
+</body>
+</html>

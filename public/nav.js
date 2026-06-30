@@ -2,6 +2,7 @@
     function getCurrentPage() {
         const path = window.location.pathname;
         if (path === '/host' || path.endsWith('/host.html')) return 'host';
+        if (path === '/leaderboard' || path === '/leaderboard.html' || path.endsWith('/leaderboard.html')) return 'leaderboard';
 
         const params = new URLSearchParams(window.location.search);
         if (params.get('practice') === '1') return 'practice';

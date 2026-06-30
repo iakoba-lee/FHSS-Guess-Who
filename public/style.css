@@ -178,6 +178,7 @@ byu-header [slot="site-title"] .subtitle a:hover {
 }
 
 .host-page .game-code-block,
+.host-page .staff-roster-block,
 .host-page .manager-login-corner,
 .host-page .join-text {
   width: 100%;
@@ -227,6 +228,84 @@ byu-header [slot="site-title"] .subtitle a:hover {
   font-size: 0.95rem;
 }
 
+.host-time-limit select {
+  width: auto;
+  min-width: 3.5rem;
+  margin-bottom: 0;
+  padding: 0.2rem 1.5rem 0.2rem 0.35rem;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23002E5D'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.1rem center;
+  background-size: 1rem;
+  border: none;
+  font-weight: 700;
+  color: var(--byu-navy);
+  font-size: 0.95rem;
+  box-shadow: none;
+}
+
+.top-scores-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.leaderboard-page .top-scores-board {
+  margin-top: 1.5rem;
+}
+
+.top-scores-section h3 {
+  margin-bottom: 0.75rem;
+}
+
+.top-scores-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.top-score-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--byu-white);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.top-score-rank {
+  font-weight: 700;
+  color: var(--byu-royal);
+  min-width: 2rem;
+}
+
+.top-score-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.top-score-details strong {
+  font-size: 1rem;
+  color: var(--byu-navy);
+}
+
+.top-score-details span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.top-score-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--byu-royal);
+  white-space: nowrap;
+}
+
 .host-control {
   flex: 1 1 calc(50% - 0.25rem);
   min-width: 7.5rem;
@@ -259,9 +338,91 @@ byu-header [slot="site-title"] .subtitle a:hover {
   background: var(--danger);
 }
 
+.lobby-start-prompt {
+  max-width: 32rem;
+  margin: 1.25rem auto 0;
+  padding: 1.25rem 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.lobby-start-prompt p {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.lobby-start-prompt .host-control {
+  width: 100%;
+  max-width: 14rem;
+}
+
+.game-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 46, 93, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.game-settings-modal.hidden {
+  display: none;
+}
+
+.game-settings-panel {
+  width: min(100%, 28rem);
+  margin: 0;
+  padding: 2rem 1.75rem;
+}
+
+.game-settings-panel h2 {
+  margin-bottom: 0.5rem;
+}
+
+.game-settings-hint {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.game-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.game-settings-fields .host-time-limit {
+  flex: 1 1 auto;
+}
+
+.game-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.game-settings-actions .host-control {
+  flex: 1 1 auto;
+  min-width: 8rem;
+}
+
 .host-control-end:hover:not(:disabled) {
   background: var(--danger);
   filter: brightness(0.9);
+}
+
+.host-control-reveal {
+  background: var(--secondary);
+}
+
+.host-control-reveal:hover:not(:disabled) {
+  background: var(--secondary-hover);
 }
 
 .game-code-block {
@@ -272,6 +433,7 @@ byu-header [slot="site-title"] .subtitle a:hover {
 }
 
 .game-code-corner,
+.staff-roster-corner,
 .manager-login-corner {
   display: flex;
   align-items: center;
@@ -283,14 +445,16 @@ byu-header [slot="site-title"] .subtitle a:hover {
   box-shadow: var(--panel-shadow);
 }
 
-.game-code-corner {
+.game-code-corner,
+.staff-roster-corner {
   flex-direction: column;
   align-items: center;
   text-align: center;
   min-width: 160px;
 }
 
-.game-code-corner span {
+.game-code-corner span,
+.staff-roster-corner span {
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 700;
@@ -298,7 +462,8 @@ byu-header [slot="site-title"] .subtitle a:hover {
   text-transform: uppercase;
 }
 
-.game-code-corner strong {
+.game-code-corner strong,
+.staff-roster-corner strong {
   color: var(--byu-navy);
   font-size: 1.75rem;
   letter-spacing: 0.05em;
@@ -357,6 +522,111 @@ byu-header [slot="site-title"] .subtitle a:hover {
   color: var(--byu-navy);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.practice-meta {
+  margin: -0.25rem 0 1.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.practice-header h2 {
+  margin-bottom: 0.5rem;
+}
+
+.practice-toolbar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.practice-customize {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: var(--byu-white);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.practice-customize-intro {
+  margin: 0 0 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.practice-customize-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.practice-customize-count {
+  margin: 0 0 0.75rem;
+  text-align: center;
+  color: var(--byu-navy);
+  font-weight: 600;
+}
+
+.practice-customize-error {
+  min-height: 1.25rem;
+  margin: 0 0 0.75rem;
+  text-align: center;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.practice-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.practice-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.practice-picker-row:hover {
+  border-color: #cbd5e1;
+}
+
+.practice-picker-row input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.practice-picker-row img,
+.practice-picker-row .staff-photo-placeholder {
+  width: 40px;
+  height: 40px;
+}
+
+.practice-picker-label {
+  min-width: 0;
+}
+
+.practice-picker-label strong {
+  display: block;
+  color: var(--byu-navy);
+}
+
+.practice-picker-label span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .manager-login-form {
