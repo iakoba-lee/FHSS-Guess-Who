@@ -566,11 +566,17 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'POST' && url.pathname === '/api/host/start_round') {
     const game = requireHost(req, url, data);
+    if (game.status === 'question') {
+      return sendJson(res, {
+        success: false,
+        error: 'Reveal the answer or wait for the timer before starting the next round.'
+      }, 400);
+    }
     if (people.length === 0) {
       return sendJson(res, { success: false, error: 'Add at least one staff member before starting.' }, 400);
     }
     if (game.round >= game.max_rounds) {
-      return sendJson(res, { success: false, error: 'All rounds are complete. End or reset the game.' }, 400);
+      return sendJson(res, { success: false, error: 'All rounds are complete. End the game to finish.' }, 400);
     }
 
     game.max_rounds = normalizeMaxRounds(data.max_rounds ?? game.max_rounds);
@@ -578,7 +584,7 @@ async function handleApi(req, res, url) {
     if (!nextPerson) {
       return sendJson(res, {
         success: false,
-        error: 'All staff members have been shown. End or reset the game.'
+        error: 'All staff members have been shown. End the game to finish.'
       }, 400);
     }
 
@@ -602,12 +608,8 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'POST' && url.pathname === '/api/host/reveal') {
     const game = requireHost(req, url, data);
-    if (game.round >= game.max_rounds) {
-      finalizeGame(game);
-    } else {
-      game.status = 'reveal';
-      touchGame(game);
-    }
+    game.status = 'reveal';
+    touchGame(game);
     return sendJson(res, { success: true });
   }
 
@@ -629,6 +631,9 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'POST' && url.pathname === '/api/host/reset') {
     const game = requireHost(req, url, data);
+    if (game.status !== 'end') {
+      return sendJson(res, { success: false, error: 'End the game before starting a new one.' }, 400);
+    }
     game.status = 'lobby';
     game.round = 0;
     game.current_person = null;

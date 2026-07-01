@@ -48,16 +48,16 @@
                     <div class="host-controls">
                         <button type="button" class="host-control subtle-btn" id="edit-game-btn" onclick="openGameSettingsModal()" disabled title="Edit Game Settings">Edit Game</button>
                         <button class="host-control" id="start-round-btn" onclick="startRoundWithTime()" disabled title="Start Next Round">Start Round</button>
-                        <button class="host-control host-control-reveal" onclick="postAction('reveal')" disabled title="Reveal Answer">Reveal</button>
-                        <button class="host-control host-control-end" onclick="postAction('end')" disabled title="End Game">End Game</button>
-                        <button class="host-control subtle-btn" onclick="resetAndNewGame()" disabled title="Reset Game">Reset</button>
+                        <button class="host-control host-control-reveal" id="reveal-btn" onclick="postAction('reveal')" disabled title="Reveal Answer">Reveal</button>
+                        <button class="host-control host-control-end" id="end-game-btn" onclick="postAction('end')" disabled title="End Game">End Game</button>
+                        <button class="host-control subtle-btn" id="reset-game-btn" onclick="resetAndNewGame()" disabled title="New Game">New Game</button>
                     </div>
 
                     <div style="text-align: center; margin-bottom: 2.5rem;">
                         <h2 id="round-title">Lobby</h2>
                         <div id="lobby-start-prompt" class="lobby-start-prompt hidden">
                             <p>Share the game code so players can join. Start when everyone is ready.</p>
-                            <button type="button" class="host-control" id="lobby-start-game-btn" onclick="startRoundWithTime()">Start Game</button>
+                            <button type="button" class="host-control lobby-start-flash-btn" id="lobby-start-game-btn" onclick="startRoundWithTime()">Start Game</button>
                         </div>
                         <div id="host-timer-wrapper" class="hidden" style="max-width: 600px; margin: 0 auto;">
                             <h3 id="timer-display" style="color: var(--secondary); font-size: 2rem; margin-bottom: 0.5rem;"></h3>
@@ -79,10 +79,17 @@
                             </div>
                         </div>
 
-                        <div>
-                            <h3>Teams</h3>
+                        <div class="teams-panel" id="teams-panel">
+                            <h3 id="teams-section-title">Teams</h3>
                             <div class="leaderboard" id="leaderboard">
                                 <!-- Teams injected here -->
+                            </div>
+                            <div class="podium-reveal hidden" id="podium-reveal" aria-hidden="true">
+                                <div class="podium-stage" id="podium-stage"></div>
+                                <div class="podium-runners-up hidden" id="podium-runners-up">
+                                    <h4 class="podium-runners-title">Runners-up</h4>
+                                    <div class="podium-runners-list" id="podium-runners-list"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -162,11 +169,11 @@
                             <span>Game Code</span>
                             <strong id="host-code">------</strong>
                         </div>
+                        <p id="join-text" class="join-text">Players join at <strong id="join-url">Starting host...</strong></p>
                         <div class="join-qr-panel" id="join-qr-panel">
                             <span class="join-qr-label">Scan to join</span>
                             <div id="join-qr" class="join-qr"></div>
                         </div>
-                        <p id="join-text" class="join-text">Players join at <strong id="join-url">Starting host...</strong></p>
                     </div>
                 </div>
             </aside>
@@ -209,10 +216,208 @@
         let currentHostState = 'lobby';
         let currentRound = 0;
         let revealRequestedForRound = false;
+        let endGameRequested = false;
         let pendingMaxRounds = null;
+        let settingsModalInitial = false;
         let staffPeople = [];
         let currentPhotoData = null;
         let managerPassword = sessionStorage.getItem('fhssManagerPassword') || '';
+        let podiumRevealSessionKey = '';
+        let podiumRevealTimeouts = [];
+
+        function clearPodiumRevealTimeouts() {
+            podiumRevealTimeouts.forEach(id => clearTimeout(id));
+            podiumRevealTimeouts = [];
+        }
+
+        function schedulePodiumStep(fn, delay) {
+            const id = setTimeout(fn, delay);
+            podiumRevealTimeouts.push(id);
+            return id;
+        }
+
+        function isFinalRoundPodium(state) {
+            const maxRounds = state.max_rounds || getSelectedMaxRounds();
+            const round = state.round || 0;
+            return round > 0
+                && round === maxRounds
+                && (state.status === 'reveal' || state.status === 'end');
+        }
+
+        function getSortedTeams(state) {
+            return Object.values(state.teams || {}).sort((a, b) => b.score - a.score);
+        }
+
+        function podiumConfetti(intensity) {
+            const colors = ['#FFB700', '#0047BA', '#10A170', '#E61744', '#FFFFFF', '#1FB3D1'];
+            if (intensity === 'winner') {
+                const duration = 2800;
+                const end = Date.now() + duration;
+                (function frame() {
+                    confetti({
+                        particleCount: 6,
+                        angle: 60,
+                        spread: 75,
+                        origin: { x: 0, y: 0.55 },
+                        colors
+                    });
+                    confetti({
+                        particleCount: 6,
+                        angle: 120,
+                        spread: 75,
+                        origin: { x: 1, y: 0.55 },
+                        colors
+                    });
+                    confetti({
+                        particleCount: 10,
+                        spread: 120,
+                        origin: { x: 0.5, y: 0.35 },
+                        colors
+                    });
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+                confetti({ particleCount: 250, spread: 160, startVelocity: 55, origin: { y: 0.45 }, colors });
+                confetti({ particleCount: 180, spread: 100, decay: 0.92, scalar: 1.1, origin: { x: 0.2, y: 0.5 }, colors });
+                confetti({ particleCount: 180, spread: 100, decay: 0.92, scalar: 1.1, origin: { x: 0.8, y: 0.5 }, colors });
+            } else {
+                confetti({ particleCount: 90, spread: 80, origin: { y: 0.55 }, colors });
+                confetti({ particleCount: 50, spread: 60, origin: { x: 0.3, y: 0.6 }, colors });
+                confetti({ particleCount: 50, spread: 60, origin: { x: 0.7, y: 0.6 }, colors });
+            }
+        }
+
+        function buildPodiumSlot(rank, team, slotClass) {
+            const name = team ? escapeHtml(team.name) : '—';
+            const score = team ? Number(team.score || 0).toLocaleString() : '0';
+            return `
+                <div class="podium-slot ${slotClass}" data-rank="${rank}">
+                    <div class="podium-name">${name}</div>
+                    <div class="podium-block">
+                        <div class="podium-rank-badge">${rank}</div>
+                        <div class="podium-score">${score}</div>
+                        <div class="podium-score-label">points</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildPodiumStage(sortedTeams) {
+            const first = sortedTeams[0] || null;
+            const second = sortedTeams[1] || null;
+            const third = sortedTeams[2] || null;
+            return [
+                buildPodiumSlot(2, second, 'podium-slot--second'),
+                buildPodiumSlot(1, first, 'podium-slot--first'),
+                buildPodiumSlot(3, third, 'podium-slot--third')
+            ].join('');
+        }
+
+        function buildRunnersUp(sortedTeams) {
+            const runners = sortedTeams.slice(3, 5);
+            if (runners.length === 0) return '';
+            return runners.map((team, index) => `
+                <div class="podium-runner" style="animation-delay: ${index * 0.12}s">
+                    <span class="podium-runner-rank">${index + 4}</span>
+                    <span>${escapeHtml(team.name)}</span>
+                    <span style="opacity: 0.75; font-weight: 500;">${Number(team.score || 0).toLocaleString()}</span>
+                </div>
+            `).join('');
+        }
+
+        function resetPodiumReveal() {
+            clearPodiumRevealTimeouts();
+            podiumRevealSessionKey = '';
+            const podium = document.getElementById('podium-reveal');
+            const board = document.getElementById('leaderboard');
+            const title = document.getElementById('teams-section-title');
+            if (podium) {
+                podium.classList.add('hidden');
+                podium.classList.remove('is-complete');
+                podium.setAttribute('aria-hidden', 'true');
+                document.getElementById('podium-stage').innerHTML = '';
+                document.getElementById('podium-runners-list').innerHTML = '';
+                document.getElementById('podium-runners-up').classList.add('hidden');
+            }
+            if (board) board.classList.remove('hidden');
+            if (title) title.innerText = 'Teams';
+        }
+
+        function showPodiumPanel(sortedTeams, animate) {
+            const board = document.getElementById('leaderboard');
+            const podium = document.getElementById('podium-reveal');
+            const title = document.getElementById('teams-section-title');
+            const stage = document.getElementById('podium-stage');
+            const runnersUp = document.getElementById('podium-runners-up');
+            const runnersList = document.getElementById('podium-runners-list');
+
+            board.classList.add('hidden');
+            podium.classList.remove('hidden');
+            podium.setAttribute('aria-hidden', 'false');
+            title.innerText = 'Final Standings';
+
+            stage.innerHTML = buildPodiumStage(sortedTeams);
+            const runnersHtml = buildRunnersUp(sortedTeams);
+            if (runnersHtml) {
+                runnersList.innerHTML = runnersHtml;
+                runnersUp.classList.remove('hidden');
+            } else {
+                runnersList.innerHTML = '';
+                runnersUp.classList.add('hidden');
+            }
+
+            const revealOrder = [
+                { rank: 3, delay: 600 },
+                { rank: 2, delay: 2800 },
+                { rank: 1, delay: 5000 }
+            ];
+
+            if (!animate) {
+                revealOrder.forEach(({ rank }) => {
+                    const slot = stage.querySelector(`.podium-slot[data-rank="${rank}"]`);
+                    if (slot) slot.classList.add('is-revealed');
+                });
+                podium.classList.add('is-complete');
+                if (runnersUp && !runnersUp.classList.contains('hidden')) {
+                    runnersUp.style.opacity = '1';
+                }
+                return;
+            }
+
+            revealOrder.forEach(({ rank, delay }) => {
+                schedulePodiumStep(() => {
+                    const slot = stage.querySelector(`.podium-slot[data-rank="${rank}"]`);
+                    if (!slot) return;
+                    slot.classList.add('is-revealed');
+                    podiumConfetti(rank === 1 ? 'winner' : 'normal');
+
+                    if (rank === 1) {
+                        schedulePodiumStep(() => {
+                            podium.classList.add('is-complete');
+                            if (runnersUp && !runnersUp.classList.contains('hidden')) {
+                                runnersUp.style.opacity = '1';
+                                podiumConfetti('normal');
+                            }
+                        }, 500);
+                    }
+                }, delay);
+            });
+        }
+
+        function handleFinalRoundPodium(state) {
+            const sessionKey = `${hostCode}-${state.round}-${state.max_rounds || getSelectedMaxRounds()}`;
+            const sortedTeams = getSortedTeams(state);
+            const podium = document.getElementById('podium-reveal');
+
+            if (podiumRevealSessionKey !== sessionKey) {
+                clearPodiumRevealTimeouts();
+                podiumRevealSessionKey = sessionKey;
+                showPodiumPanel(sortedTeams, true);
+            } else if (podium && podium.classList.contains('hidden')) {
+                showPodiumPanel(sortedTeams, false);
+            }
+        }
 
         function updateStaffCountDisplay(count) {
             const el = document.getElementById('staff-count');
@@ -327,10 +532,27 @@
             });
         }
 
-        function setHostControls(enabled) {
-            document.querySelectorAll('.host-controls .host-control').forEach(button => {
-                button.disabled = !enabled;
-            });
+        function updateHostControlButtons(state) {
+            if (!hostCode || !hostToken) return;
+
+            const status = state.status;
+            const round = state.round || 0;
+            const maxRounds = state.max_rounds || getSelectedMaxRounds();
+            const canStartNextRound = (status === 'lobby' || status === 'reveal') && round < maxRounds;
+            const gameEnded = status === 'end' || endGameRequested;
+
+            const startRoundBtn = document.getElementById('start-round-btn');
+            const revealBtn = document.getElementById('reveal-btn');
+            const endBtn = document.getElementById('end-game-btn');
+            const resetBtn = document.getElementById('reset-game-btn');
+
+            if (startRoundBtn) startRoundBtn.disabled = !canStartNextRound;
+            if (revealBtn) revealBtn.disabled = status !== 'question';
+            if (endBtn) endBtn.disabled = gameEnded || (status === 'lobby' && round === 0);
+            if (resetBtn) {
+                resetBtn.disabled = !gameEnded;
+                resetBtn.classList.toggle('lobby-start-flash-btn', gameEnded);
+            }
         }
 
         function setEditGameEnabled(enabled) {
@@ -352,12 +574,12 @@
 
         function openGameSettingsModal(options = {}) {
             const initial = options.initial === true;
+            settingsModalInitial = initial;
             const modal = document.getElementById('game-settings-modal');
             const hint = document.getElementById('game-settings-hint');
             const openLobbyBtn = document.getElementById('modal-open-lobby');
             const saveBtn = document.getElementById('modal-save-settings');
             const cancelBtn = document.getElementById('modal-cancel-settings');
-
             setGameSettingsMessage('');
             hint.innerText = initial
                 ? 'Set the time limit and number of rounds, then open the lobby for players to join.'
@@ -372,6 +594,7 @@
 
         function closeGameSettingsModal() {
             document.getElementById('game-settings-modal').classList.add('hidden');
+            settingsModalInitial = false;
             setGameSettingsMessage('');
         }
 
@@ -419,6 +642,7 @@
                 setGameSettingsMessage('Could not save settings. Restart the server and try again.', true);
                 return;
             }
+            settingsModalInitial = false;
             closeGameSettingsModal();
         }
 
@@ -445,8 +669,8 @@
             sessionStorage.setItem('fhssHostCode', hostCode);
             sessionStorage.setItem('fhssHostToken', hostToken);
             updateJoinDisplay();
-            setHostControls(true);
-            setEditGameEnabled(true);
+            updateHostControlButtons(result.game);
+            setEditGameEnabled(result.game.status !== 'question');
             if ((result.game.round || 0) === 0 && result.game.status === 'lobby') {
                 openGameSettingsModal({ initial: true });
             }
@@ -454,6 +678,17 @@
 
         function postAction(action) {
             if (!hostCode || !hostToken) return;
+            if (action === 'reveal') {
+                revealRequestedForRound = true;
+            }
+            if (action === 'end') {
+                endGameRequested = true;
+                updateHostControlButtons({
+                    status: currentHostState,
+                    round: currentRound,
+                    max_rounds: getSelectedMaxRounds()
+                });
+            }
             fetch('/api/host/' + action, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -463,6 +698,7 @@
 
         async function resetAndNewGame() {
             if (!hostCode || !hostToken) return;
+            if (currentHostState !== 'end' && !endGameRequested) return;
             const response = await fetch('/api/host/reset', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -471,13 +707,16 @@
             if (!response.ok) return;
             pendingMaxRounds = null;
             revealRequestedForRound = false;
+            endGameRequested = false;
             currentRound = 0;
             currentHostState = 'lobby';
+            resetPodiumReveal();
             openGameSettingsModal({ initial: true });
         }
 
         function startRoundWithTime() {
             if (!hostCode || !hostToken) return;
+            if (currentHostState === 'question') return;
             let limit = document.getElementById('time-limit').value || 30;
             fetch('/api/host/start_round', { 
                 method: 'POST', 
@@ -503,6 +742,17 @@
         document.getElementById('modal-save-settings').addEventListener('click', saveGameSettingsFromModal);
         document.getElementById('modal-cancel-settings').addEventListener('click', closeGameSettingsModal);
         document.getElementById('game-settings-close').addEventListener('click', closeGameSettingsModal);
+
+        const gameSettingsModal = document.getElementById('game-settings-modal');
+        gameSettingsModal.addEventListener('click', event => {
+            if (event.target === gameSettingsModal) {
+                closeGameSettingsModal();
+            }
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || !isSettingsModalOpen()) return;
+            closeGameSettingsModal();
+        });
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({
@@ -690,12 +940,12 @@
                 .then(state => {
                     syncMaxRoundsSelect(state.max_rounds || 15);
                     setEditGameEnabled(state.status !== 'question');
+                    updateHostControlButtons(state);
                     currentRound = state.round || 0;
 
                     if (state.status === 'lobby') {
                         document.getElementById('round-title').innerText = `Lobby · ${state.max_rounds || getSelectedMaxRounds()} rounds`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
-                        document.getElementById('join-text').classList.remove('hidden');
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
                         updateLobbyStartPrompt(state);
@@ -705,7 +955,6 @@
                             revealRequestedForRound = false;
                         }
                         document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()}`;
-                        document.getElementById('join-text').classList.add('hidden');
                         
                         let elapsed = (Date.now() / 1000) - state.start_time;
                         let remaining = Math.max(0, state.time_limit - elapsed);
@@ -738,12 +987,17 @@
                         document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()} · Results`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         if (state.current_person) {
+                            const photoUrl = state.current_person.image ? '/' + state.current_person.image : '';
+                            document.getElementById('target-photo').src = photoUrl;
+                            document.getElementById('target-photo-container').classList.remove('hidden');
                             document.getElementById('target-info').classList.remove('hidden');
                             document.getElementById('target-name').innerText = state.current_person.name;
                             document.getElementById('target-pos').innerText = state.current_person.position;
                         }
                         if (currentHostState !== 'reveal') {
-                            confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } });
+                            if (!isFinalRoundPodium(state)) {
+                                confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } });
+                            }
                         }
                     } else if (state.status === 'end') {
                         updateLobbyStartPrompt({ status: state.status, round: state.round });
@@ -752,40 +1006,55 @@
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
                         if (currentHostState !== 'end') {
-                            confetti({ particleCount: 400, spread: 200, origin: { y: 0.3 } });
+                            if (!isFinalRoundPodium(state)) {
+                                confetti({ particleCount: 400, spread: 200, origin: { y: 0.3 } });
+                            }
                         }
                     }
                     currentHostState = state.status;
 
-                    // Render teams
+                    const showPodium = isFinalRoundPodium(state);
                     const board = document.getElementById('leaderboard');
-                    const sortedTeams = Object.values(state.teams).sort((a,b) => b.score - a.score);
-                    
-                    let newHtml = '';
-                    sortedTeams.forEach(t => {
-                        let statusHtml = '';
-                        if (state.status === 'question') {
-                            if(t.answered) statusHtml = '<span class="status-badge status-answered">Answered</span>';
-                            else statusHtml = '<span class="status-badge status-waiting">Thinking...</span>';
-                        } else if (state.status === 'reveal') {
-                            statusHtml = `<span>${t.correct_name && t.correct_pos ? '⭐⭐' : (t.correct_name || t.correct_pos ? '⭐' : '❌')}</span>`;
+                    const title = document.getElementById('teams-section-title');
+
+                    if (showPodium) {
+                        handleFinalRoundPodium(state);
+                    } else {
+                        if (podiumRevealSessionKey) {
+                            resetPodiumReveal();
                         }
 
-                        const scoreDisplay = (state.status === 'question') ? '—' : t.score;
+                        const sortedTeams = getSortedTeams(state);
+                        let newHtml = '';
+                        sortedTeams.forEach(t => {
+                            let statusHtml = '';
+                            if (state.status === 'question') {
+                                if (t.answered) statusHtml = '<span class="status-badge status-answered">Answered</span>';
+                                else statusHtml = '<span class="status-badge status-waiting">Thinking...</span>';
+                            } else if (state.status === 'reveal') {
+                                statusHtml = `<span>${t.correct_name && t.correct_pos ? '⭐⭐' : (t.correct_name || t.correct_pos ? '⭐' : '❌')}</span>`;
+                            }
 
-                        newHtml += `
-                            <div class="team-row">
-                                <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <span class="team-score">${scoreDisplay}</span>
-                                    <span style="font-size: 1.125rem; font-weight: 600;">${escapeHtml(t.name)}</span>
+                            const scoreDisplay = (state.status === 'question') ? '—' : t.score;
+
+                            newHtml += `
+                                <div class="team-row">
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <span class="team-score">${scoreDisplay}</span>
+                                        <span style="font-size: 1.125rem; font-weight: 600;">${escapeHtml(t.name)}</span>
+                                    </div>
+                                    ${statusHtml}
                                 </div>
-                                ${statusHtml}
-                            </div>
-                        `;
-                    });
-                    
-                    if (board.innerHTML !== newHtml) {
-                        board.innerHTML = newHtml;
+                            `;
+                        });
+
+                        if (title) title.innerText = 'Teams';
+                        if (board) {
+                            board.classList.remove('hidden');
+                            if (board.innerHTML !== newHtml) {
+                                board.innerHTML = newHtml;
+                            }
+                        }
                     }
                 })
                 .catch(error => {

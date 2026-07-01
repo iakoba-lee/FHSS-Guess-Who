@@ -185,7 +185,7 @@
                         <h2 id="final-score" style="color: var(--secondary); font-size: 3rem;">0 pts</h2>
                         <p>Check the host screen for the final standings!</p>
                     </div>
-                    <button style="width: 100%;" onclick="location.reload()">Back Home</button>
+                    <button style="width: 100%;" onclick="goHome()">Back Home</button>
                 </div>
             </div>
         </main>
@@ -548,6 +548,19 @@
             });
             document.getElementById(id).classList.remove('hidden');
             if (window.fhssNav) window.fhssNav.updateActiveLinks();
+        }
+
+        function goHome() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+            teamId = null;
+            gameCode = '';
+            teamName = '';
+            currentState = '';
+            history.replaceState(null, '', '/');
+            showView('view-home');
         }
 
         function shuffleUnique(items) {
