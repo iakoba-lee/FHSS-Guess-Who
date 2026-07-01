@@ -178,6 +178,7 @@
 
     <div id="game-settings-modal" class="game-settings-modal hidden" role="dialog" aria-modal="true" aria-labelledby="game-settings-title">
         <div class="game-settings-panel glass-panel">
+            <button type="button" class="game-settings-close" id="game-settings-close" aria-label="Close">×</button>
             <h2 id="game-settings-title">Game Settings</h2>
             <p class="game-settings-hint" id="game-settings-hint">Set the time limit and number of rounds, then open the lobby for players to join.</p>
             <div class="game-settings-fields">
@@ -501,6 +502,7 @@
         document.getElementById('modal-open-lobby').addEventListener('click', openLobbyFromModal);
         document.getElementById('modal-save-settings').addEventListener('click', saveGameSettingsFromModal);
         document.getElementById('modal-cancel-settings').addEventListener('click', closeGameSettingsModal);
+        document.getElementById('game-settings-close').addEventListener('click', closeGameSettingsModal);
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({

@@ -123,6 +123,12 @@
                     <div class="practice-header">
                         <h2>Practice Mode</h2>
                         <p class="practice-meta" id="practice-meta"></p>
+                        <div class="practice-progress" id="practice-progress" hidden>
+                            <div class="practice-progress-track">
+                                <div class="practice-progress-fill" id="practice-progress-fill"></div>
+                            </div>
+                            <span class="practice-progress-pct" id="practice-progress-pct">0%</span>
+                        </div>
                         <div class="practice-toolbar">
                             <button type="button" class="small-btn subtle-btn" id="prac-customize-btn"
                                 onclick="openPracticeCustomize()">Customize Practice</button>
@@ -234,20 +240,30 @@
 
         function updatePracticeMeta() {
             const el = document.getElementById('practice-meta');
+            const progressEl = document.getElementById('practice-progress');
+            const fillEl = document.getElementById('practice-progress-fill');
+            const pctEl = document.getElementById('practice-progress-pct');
             if (!el) return;
             if (allPeople.length === 0) {
                 el.innerText = '';
+                if (progressEl) progressEl.hidden = true;
                 return;
             }
             const total = allPeople.length;
             const pool = getPracticePool();
             const poolNoun = pool.length === 1 ? 'person' : 'people';
             const seen = pracUsedIds.length;
+            const poolSize = pool.length;
+            const pct = poolSize > 0 ? Math.round((seen / poolSize) * 100) : 0;
             let summary = pracPoolIds && pool.length < total
                 ? `Practicing with ${pool.length} of ${total} ${poolNoun}`
                 : `${total} ${total === 1 ? 'person' : 'people'} in the system`;
-            if (seen > 0) summary += ` · ${seen} seen this session`;
             el.innerText = summary;
+            if (progressEl && fillEl && pctEl) {
+                progressEl.hidden = false;
+                fillEl.style.width = `${pct}%`;
+                pctEl.innerText = `${pct}%`;
+            }
             updatePracticeCustomizeButton();
         }
 

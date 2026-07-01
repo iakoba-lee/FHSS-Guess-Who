@@ -375,9 +375,40 @@ byu-header [slot="site-title"] .subtitle a:hover {
 }
 
 .game-settings-panel {
+  position: relative;
   width: min(100%, 28rem);
   margin: 0;
   padding: 2rem 1.75rem;
+}
+
+.game-settings-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.game-settings-close:hover {
+  color: var(--byu-navy);
+  background: rgba(0, 46, 93, 0.08);
+}
+
+.game-settings-close:focus-visible {
+  outline: 2px solid var(--byu-navy);
+  outline-offset: 2px;
 }
 
 .game-settings-panel h2 {
@@ -525,11 +556,44 @@ byu-header [slot="site-title"] .subtitle a:hover {
 }
 
 .practice-meta {
-  margin: -0.25rem 0 1.25rem;
+  margin: -0.25rem 0 0.75rem;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.95rem;
   font-weight: 600;
+}
+
+.practice-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 320px;
+  margin: 0 auto 1.25rem;
+}
+
+.practice-progress-track {
+  flex: 1;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.practice-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--byu-navy);
+  border-radius: 5px;
+  transition: width 0.35s ease;
+}
+
+.practice-progress-pct {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--byu-navy);
+  text-align: right;
 }
 
 .practice-header h2 {
