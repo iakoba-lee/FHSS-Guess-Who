@@ -1067,6 +1067,30 @@ select:focus {
   background: #d9d9d9;
 }
 
+.leaderboard-flash-btn {
+  animation: leaderboard-flash 1.2s ease-in-out infinite;
+  border-color: #e6a800;
+  color: var(--text-main);
+}
+
+.leaderboard-flash-btn:hover {
+  animation-play-state: paused;
+  background: #f5a800;
+}
+
+@keyframes leaderboard-flash {
+  0%,
+  100% {
+    background: var(--warning-light);
+    box-shadow: 0 0 8px rgba(255, 183, 0, 0.45);
+  }
+
+  50% {
+    background: #ffe566;
+    box-shadow: 0 0 16px rgba(255, 183, 0, 0.75);
+  }
+}
+
 .danger-btn {
   background: var(--danger);
 }

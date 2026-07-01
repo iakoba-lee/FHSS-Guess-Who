@@ -552,7 +552,9 @@ async function handleApi(req, res, url) {
       team.correct_pos = correctPosition;
 
       let points = 0;
-      const speedMultiplier = Math.max(0.1, 1 - (timeTaken / timeLimit));
+      const instantWindowSeconds = 3;
+      const speedTime = Math.max(0, timeTaken - instantWindowSeconds);
+      const speedMultiplier = Math.max(0.1, 1 - (speedTime / timeLimit));
       if (correctName) points += Math.floor(1000 * speedMultiplier);
       if (correctPosition) points += Math.floor(1000 * speedMultiplier);
       if (correctName && correctPosition) points += 500;
