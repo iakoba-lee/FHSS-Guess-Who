@@ -1,1 +1,6 @@
 .env
+
+# Local runtime data — do not commit (each deployment keeps its own roster & scores)
+people.json
+leaderboard.json
+public/uploads/
