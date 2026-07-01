@@ -8,8 +8,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
+      - DATA_DIR=/app/data
     volumes:
-      - faces-game-data:/usr/src/app/data
+      - faces-game-data:/app/data
     networks:
       - web
 

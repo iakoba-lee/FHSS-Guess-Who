@@ -8,9 +8,18 @@ const os = require('os');
 const ROOT = __dirname;
 const PORT = Number.parseInt(process.env.PORT, 10) || 8080;
 const MANAGER_PASSWORD = process.env.MANAGER_PASSWORD || process.env.MANAGER_KEY;
-const PEOPLE_FILE = path.join(ROOT, 'people.json'); // Permanent storage file for staff roster
-const LEADERBOARD_FILE = path.join(ROOT, 'leaderboard.json');
-const UPLOAD_DIR = path.join(ROOT, 'public', 'uploads');
+// When DATA_DIR is set (production Docker), live data lives on a persistent volume.
+// Without it, data stays in the repo root for local development.
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
+const PEOPLE_FILE = DATA_DIR
+  ? path.join(DATA_DIR, 'people.json')
+  : path.join(ROOT, 'people.json');
+const LEADERBOARD_FILE = DATA_DIR
+  ? path.join(DATA_DIR, 'leaderboard.json')
+  : path.join(ROOT, 'leaderboard.json');
+const UPLOAD_DIR = DATA_DIR
+  ? path.join(DATA_DIR, 'uploads')
+  : path.join(ROOT, 'public', 'uploads');
 const LEADERBOARD_SIZE = 10;
 
 const MIME_TYPES = {
@@ -26,7 +35,6 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml'
 };
 
-let people = loadPeople();
 const games = new Map();
 const GAME_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const GAME_TTL_MS = 8 * 60 * 60 * 1000;
@@ -188,6 +196,38 @@ function withIds(records) {
     seen.add(id);
     return { ...person, id };
   });
+}
+
+function ensureDataDir() {
+  if (!DATA_DIR) return;
+
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+  const copyIfMissing = (dest, seedPath, emptyContent) => {
+    if (fs.existsSync(dest)) return;
+    if (fs.existsSync(seedPath)) {
+      fs.copyFileSync(seedPath, dest);
+      console.log(`Seeded ${path.basename(dest)} from repo defaults.`);
+      return;
+    }
+    fs.writeFileSync(dest, emptyContent);
+  };
+
+  copyIfMissing(PEOPLE_FILE, path.join(ROOT, 'people.json'), '[]\n');
+  copyIfMissing(LEADERBOARD_FILE, path.join(ROOT, 'leaderboard.json'), '[]\n');
+
+  const legacyUploads = path.join(ROOT, 'public', 'uploads');
+  if (!fs.existsSync(legacyUploads)) return;
+
+  for (const name of fs.readdirSync(legacyUploads)) {
+    if (name.startsWith('.')) continue;
+    const src = path.join(legacyUploads, name);
+    const dest = path.join(UPLOAD_DIR, name);
+    if (fs.statSync(src).isFile() && !fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+    }
+  }
 }
 
 function loadPeople() {
@@ -681,13 +721,23 @@ function resolveStaticPathWithHtmlFallback(requestPath) {
   return primary;
 }
 
-function serveStatic(req, res, url) {
-  const filePath = resolveStaticPathWithHtmlFallback(decodeURIComponent(url.pathname));
-  if (!filePath) {
-    res.writeHead(403);
-    return res.end('Forbidden');
+function resolveUploadPath(urlPath) {
+  const relative = decodeURIComponent(urlPath).replace(/^\/uploads\//, '');
+  if (!relative || relative.includes('..')) return null;
+
+  const candidates = [
+    path.join(UPLOAD_DIR, relative),
+    path.join(ROOT, 'public', 'uploads', relative)
+  ];
+
+  for (const filePath of candidates) {
+    if (fs.existsSync(filePath)) return filePath;
   }
 
+  return null;
+}
+
+function sendFile(res, filePath) {
   fs.readFile(filePath, (error, data) => {
     if (error) {
       res.writeHead(404);
@@ -698,6 +748,23 @@ function serveStatic(req, res, url) {
     res.writeHead(200, { 'Content-Type': type });
     res.end(data);
   });
+}
+
+function serveStatic(req, res, url) {
+  if (url.pathname.startsWith('/uploads/')) {
+    const uploadPath = resolveUploadPath(url.pathname);
+    if (uploadPath) return sendFile(res, uploadPath);
+    res.writeHead(404);
+    return res.end('Not found');
+  }
+
+  const filePath = resolveStaticPathWithHtmlFallback(decodeURIComponent(url.pathname));
+  if (!filePath) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
+
+  sendFile(res, filePath);
 }
 
 function getIp() {
@@ -742,6 +809,9 @@ function startServer(port = PORT) {
     console.log(`Host should visit http://${getIp()}:${port}/host`);
   });
 }
+
+ensureDataDir();
+let people = loadPeople();
 
 if (require.main === module) {
   startServer();
