@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css"
         media="all">
 
-    <link rel="stylesheet" href="style.css">
-    <script src="nav.js?v=4" defer></script>
+    <link rel="stylesheet" href="style.css?v=16">
+    <script src="nav.js?v=7" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
@@ -23,7 +23,7 @@
     <div class="containing-element">
         <byu-header>
             <a slot="logo" href="https://www.byu.edu" target="_blank">
-                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+                <img src="https://cdn.byu.edu/shared-icons/latest/logos/monogram-white.svg" alt="BYU Logo">
             </a>
             <span slot="site-title">
                 <a href="/">FHSS Guess Who</a>
@@ -94,7 +94,7 @@
                 </div>
 
                 <div class="glass-panel hidden" id="view-question">
-                    <h2>Match the Person!</h2>
+                    <h2>Match the Clue!</h2>
                     <div style="text-align: center; margin-bottom: 1rem;" id="player-timer-wrapper" class="hidden">
                         <h3 id="player-timer-display" style="color: var(--danger); font-size: 1.5rem;"></h3>
                         <div class="timer-bar-container">
@@ -102,13 +102,9 @@
                         </div>
                     </div>
                     <p style="margin-bottom: 1rem; color: var(--text-muted);">Look at the photo on the host screen and
-                        select the correct Name and Position.</p>
+                        select the correct answers below.</p>
 
-                    <h3 style="margin-top: 2rem;">1. Select Name</h3>
-                    <div class="grid-2" id="options-name"></div>
-
-                    <h3 style="margin-top: 2rem;">2. Select Position</h3>
-                    <div class="grid-2" id="options-pos"></div>
+                    <div id="player-options-fields"></div>
 
                     <button style="width: 100%; margin-top: 2rem;" onclick="submitAnswer()" id="submit-btn"
                         disabled>Submit Answer</button>
@@ -133,18 +129,23 @@
                             </div>
                             <span class="practice-progress-pct" id="practice-progress-pct">0%</span>
                         </div>
+                        <div class="group-picker" id="practice-group-picker" aria-label="Practice groups">
+                            <p class="group-picker-label">Choose groups to practice</p>
+                            <div class="group-picker-options" id="practice-group-options"></div>
+                            <p class="group-picker-count" id="practice-group-count"></p>
+                        </div>
                         <div class="practice-toolbar">
                             <button type="button" class="small-btn subtle-btn" id="prac-customize-btn"
-                                onclick="openPracticeCustomize()">Customize Practice</button>
+                                onclick="openPracticeCustomize()" disabled>Customize Practice</button>
                         </div>
                     </div>
 
                     <div class="practice-customize hidden" id="practice-customize">
-                        <p class="practice-customize-intro">Choose who you want to quiz yourself on.</p>
+                        <p class="practice-customize-intro">Fine-tune who you want to quiz yourself on within the selected groups.</p>
                         <div class="practice-customize-actions">
                             <button type="button" class="small-btn" onclick="selectAllPracticePeople(true)">Select All</button>
                             <button type="button" class="small-btn subtle-btn" onclick="selectAllPracticePeople(false)">Clear All</button>
-                            <button type="button" class="small-btn" onclick="useEveryoneForPractice()">Use Everyone</button>
+                            <button type="button" class="small-btn" onclick="useEveryoneForPractice()">Use Group Pool</button>
                             <button type="button" class="small-btn" onclick="applyPracticeSelection()">Start Practice</button>
                             <button type="button" class="small-btn subtle-btn" onclick="closePracticeCustomize()">Cancel</button>
                         </div>
@@ -158,11 +159,7 @@
                             <img id="prac-photo" src="" alt="Person Photo" />
                         </div>
 
-                        <h3 style="margin-top: 1rem;">1. Select Name</h3>
-                        <div class="grid-2" id="prac-options-name"></div>
-
-                        <h3 style="margin-top: 1rem;">2. Select Position</h3>
-                        <div class="grid-2" id="prac-options-pos"></div>
+                        <div id="prac-options-fields"></div>
 
                         <div style="text-align: center; margin-top: 1rem; min-height: 2rem;">
                             <p id="prac-feedback" style="font-weight: bold; font-size: 1.125rem;"></p>
@@ -171,7 +168,7 @@
                         <button style="width: 100%; margin-top: 1rem;" onclick="submitPractice()" id="prac-submit-btn"
                             disabled>Submit Answer</button>
                         <button style="width: 100%; margin-top: 1rem; background: var(--secondary);"
-                            onclick="nextPracticeRound()" id="prac-next-btn" class="hidden">Next Person</button>
+                            onclick="nextPracticeRound()" id="prac-next-btn" class="hidden">Next</button>
                     </div>
 
                     <button
@@ -197,17 +194,19 @@
         let teamId = null;
         let gameCode = '';
         let teamName = '';
-        let selectedName = null;
-        let selectedPos = null;
+        let selectedAnswers = {};
+        let currentGuessFields = [];
         let currentState = 'lobby';
         let pollTimer = null;
 
         let allPeople = [];
+        let groupsCatalog = [];
+        let pracSelectedGroups = [];
         let pracPoolIds = null;
         let pracUsedIds = [];
         let pracTarget = null;
-        let pracSelectedName = null;
-        let pracSelectedPos = null;
+        let pracSelectedAnswers = {};
+        let pracGuessFields = [];
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({
@@ -219,6 +218,154 @@
             }[char]));
         }
 
+        function personInSelectedGroups(person, groupIds = pracSelectedGroups) {
+            const personGroups = Array.isArray(person.groups) && person.groups.length
+                ? person.groups
+                : ['clients'];
+            return groupIds.some(id => personGroups.includes(id));
+        }
+
+        function getGroupPool() {
+            return allPeople.filter(person => personInSelectedGroups(person));
+        }
+
+        function getPersonFieldValue(person, fieldId) {
+            if (!person) return '';
+            if (fieldId === 'name') return person.name || '';
+            if (fieldId === 'position') return person.position || '';
+            if (fieldId === 'gender') return person.gender || 'F';
+            if (fieldId === 'photo') return person.image || '';
+            if (person.values && person.values[fieldId] != null) return String(person.values[fieldId]);
+            if (fieldId === 'abbreviation') return person.position || '';
+            return '';
+        }
+
+        function mergePracticeGuessFields() {
+            const merged = [];
+            const seen = new Set();
+            pracSelectedGroups.forEach(id => {
+                const group = groupsCatalog.find(item => item.id === id);
+                const fields = Array.isArray(group?.fields) ? group.fields : [
+                    { id: 'name', label: 'Name', type: 'text', guessed: true, filter_by_gender: true },
+                    { id: 'position', label: 'Position', type: 'text', guessed: true }
+                ];
+                fields.forEach(field => {
+                    if (field.type !== 'text' || !field.guessed || seen.has(field.id)) return;
+                    seen.add(field.id);
+                    merged.push(field);
+                });
+            });
+            return merged.length ? merged : [
+                { id: 'name', label: 'Name', type: 'text', guessed: true, filter_by_gender: true },
+                { id: 'position', label: 'Position', type: 'text', guessed: true }
+            ];
+        }
+
+        function escapeAttr(value) {
+            return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        function renderOptionSections(containerId, guessFields, optionsByField, selectFnName) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = guessFields.map((field, index) => {
+                const options = optionsByField[field.id] || [];
+                const buttons = options.map(value =>
+                    `<button class="option-btn" onclick="${selectFnName}('${escapeAttr(field.id)}', '${escapeAttr(value)}')">${escapeHtml(value)}</button>`
+                ).join('');
+                return `
+                    <h3 style="margin-top: ${index === 0 ? '1rem' : '2rem'};">${index + 1}. Select ${escapeHtml(field.label)}</h3>
+                    <div class="grid-2" data-field-id="${escapeHtml(field.id)}">${buttons}</div>
+                `;
+            }).join('');
+        }
+
+
+        async function ensureCatalogLoaded(force = false) {
+            await ensurePeopleLoaded();
+            if (!force && groupsCatalog.length > 0) return;
+            try {
+                const response = await fetch('/api/groups');
+                const data = await response.json();
+                if (response.ok && Array.isArray(data.groups) && data.groups.length > 0) {
+                    groupsCatalog = data.groups;
+                } else if (groupsCatalog.length === 0) {
+                    groupsCatalog = [
+                        { id: 'clients', label: 'Clients', description: 'FHSS staff and faculty clients', count: 0 },
+                        { id: 'internal-staff', label: 'Internal Staff', description: 'FHSS Computing Services', count: 0 },
+                        { id: 'locations', label: 'Locations', description: 'FHSS buildings and locations', count: 0 },
+                        { id: 'departments', label: 'Departments', description: 'FHSS departments we service', count: 0 }
+                    ];
+                }
+            } catch (error) {
+                if (groupsCatalog.length === 0) {
+                    groupsCatalog = [
+                        { id: 'clients', label: 'Clients', description: 'FHSS staff and faculty clients', count: 0 },
+                        { id: 'internal-staff', label: 'Internal Staff', description: 'FHSS Computing Services', count: 0 },
+                        { id: 'locations', label: 'Locations', description: 'FHSS buildings and locations', count: 0 },
+                        { id: 'departments', label: 'Departments', description: 'FHSS departments we service', count: 0 }
+                    ];
+                }
+            }
+            pracSelectedGroups = pracSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
+        }
+
+        function renderPracticeGroupPicker() {
+            const container = document.getElementById('practice-group-options');
+            if (!container) return;
+            container.innerHTML = groupsCatalog.map(group => {
+                const checked = pracSelectedGroups.includes(group.id) ? 'checked' : '';
+                const count = allPeople.filter(person => personInSelectedGroups(person, [group.id])).length;
+                return `
+                    <label class="group-option">
+                        <input class="group-option-check" type="checkbox" value="${escapeHtml(group.id)}" ${checked}
+                            onchange="onPracticeGroupsChanged()">
+                        <span class="group-option-name">${escapeHtml(group.label)}</span>
+                        <span class="group-option-count">${count}</span>
+                    </label>
+                `;
+            }).join('');
+            updatePracticeGroupCount();
+        }
+
+        function updatePracticeGroupCount() {
+            const el = document.getElementById('practice-group-count');
+            if (!el) return;
+            const pool = getGroupPool();
+            const labels = groupsCatalog
+                .filter(group => pracSelectedGroups.includes(group.id))
+                .map(group => group.label);
+            if (labels.length === 0) {
+                el.innerText = 'Choose one or more groups to practice with.';
+                return;
+            }
+            el.innerText = `${pool.length} ${pool.length === 1 ? 'entry' : 'entries'} from ${labels.join(' + ')}`;
+        }
+
+        function onPracticeGroupsChanged() {
+            const checked = [...document.querySelectorAll('#practice-group-options input[type="checkbox"]:checked')]
+                .map(input => input.value);
+            pracSelectedGroups = checked;
+            pracPoolIds = null;
+            pracUsedIds = [];
+            updatePracticeGroupCount();
+            updatePracticeMeta();
+            if (checked.length === 0) {
+                const errorEl = document.getElementById('practice-customize-error');
+                if (errorEl) errorEl.innerText = '';
+                if (!document.getElementById('practice-customize').classList.contains('hidden')) {
+                    setPracticeCustomizeVisible(false);
+                }
+                renderPracticeRound();
+                return;
+            }
+            if (!document.getElementById('practice-customize').classList.contains('hidden')) {
+                renderPracticePicker();
+            } else {
+                renderPracticeRound();
+            }
+        }
+
         async function ensurePeopleLoaded() {
             if (allPeople.length > 0) return allPeople;
             const response = await fetch('/api/people');
@@ -227,15 +374,19 @@
         }
 
         function getPracticePool() {
-            if (!pracPoolIds) return allPeople;
-            return allPeople.filter(person => pracPoolIds.has(person.id));
+            const groupPool = getGroupPool();
+            if (!pracPoolIds) return groupPool;
+            return groupPool.filter(person => pracPoolIds.has(person.id));
         }
 
         function updatePracticeCustomizeButton() {
             const button = document.getElementById('prac-customize-btn');
             if (!button) return;
+            const hasGroups = pracSelectedGroups.length > 0;
+            button.disabled = !hasGroups;
             const pool = getPracticePool();
-            if (!pracPoolIds || pool.length === allPeople.length) {
+            const groupPool = getGroupPool();
+            if (!hasGroups || !pracPoolIds || pool.length === groupPool.length) {
                 button.innerText = 'Customize Practice';
                 return;
             }
@@ -248,20 +399,34 @@
             const fillEl = document.getElementById('practice-progress-fill');
             const pctEl = document.getElementById('practice-progress-pct');
             if (!el) return;
-            if (allPeople.length === 0) {
-                el.innerText = '';
+            if (pracSelectedGroups.length === 0) {
+                el.innerText = 'Choose one or more groups below to start practicing.';
                 if (progressEl) progressEl.hidden = true;
+                updatePracticeCustomizeButton();
+                updatePracticeGroupCount();
                 return;
             }
-            const total = allPeople.length;
+            const groupPool = getGroupPool();
+            if (groupPool.length === 0) {
+                el.innerText = 'No entries in the selected groups yet.';
+                if (progressEl) progressEl.hidden = true;
+                updatePracticeCustomizeButton();
+                return;
+            }
             const pool = getPracticePool();
-            const poolNoun = pool.length === 1 ? 'person' : 'people';
+            const poolNoun = pool.length === 1 ? 'entry' : 'entries';
             const seen = pracUsedIds.length;
             const poolSize = pool.length;
             const pct = poolSize > 0 ? Math.round((seen / poolSize) * 100) : 0;
-            let summary = pracPoolIds && pool.length < total
-                ? `Practicing with ${pool.length} of ${total} ${poolNoun}`
-                : `${total} ${total === 1 ? 'person' : 'people'} in the system`;
+            const groupLabels = groupsCatalog
+                .filter(group => pracSelectedGroups.includes(group.id))
+                .map(group => group.label);
+            let summary = `Practicing ${groupLabels.join(' + ') || 'selected groups'}`;
+            if (pracPoolIds && pool.length < groupPool.length) {
+                summary += ` · ${pool.length} of ${groupPool.length} ${poolNoun}`;
+            } else {
+                summary += ` · ${pool.length} ${poolNoun}`;
+            }
             el.innerText = summary;
             if (progressEl && fillEl && pctEl) {
                 progressEl.hidden = false;
@@ -269,20 +434,28 @@
                 pctEl.innerText = `${pct}%`;
             }
             updatePracticeCustomizeButton();
+            updatePracticeGroupCount();
         }
 
         function updatePracticeCustomizeCount() {
             const el = document.getElementById('practice-customize-count');
             if (!el) return;
+            const groupPool = getGroupPool();
             const checked = document.querySelectorAll('#practice-picker input[type="checkbox"]:checked').length;
-            el.innerText = `${checked} of ${allPeople.length} selected`;
+            el.innerText = `${checked} of ${groupPool.length} selected`;
         }
 
         function renderPracticePicker() {
             const picker = document.getElementById('practice-picker');
             if (!picker) return;
-            const selectedIds = pracPoolIds || new Set(allPeople.map(person => person.id));
-            picker.innerHTML = allPeople.map(person => `
+            const groupPool = getGroupPool();
+            const selectedIds = pracPoolIds || new Set(groupPool.map(person => person.id));
+            if (groupPool.length === 0) {
+                picker.innerHTML = '<p class="empty-state">No entries in the selected groups yet.</p>';
+                updatePracticeCustomizeCount();
+                return;
+            }
+            picker.innerHTML = groupPool.map(person => `
                 <label class="practice-picker-row">
                     <input type="checkbox" value="${escapeHtml(person.id)}" ${selectedIds.has(person.id) ? 'checked' : ''} onchange="updatePracticeCustomizeCount()">
                     ${person.image
@@ -304,9 +477,14 @@
         }
 
         async function openPracticeCustomize() {
-            await ensurePeopleLoaded();
+            await ensureCatalogLoaded(true);
+            if (pracSelectedGroups.length === 0) {
+                updatePracticeMeta();
+                return;
+            }
             showView('view-practice');
             setPracticeCustomizeVisible(true);
+            renderPracticeGroupPicker();
             renderPracticePicker();
             updatePracticeMeta();
         }
@@ -328,6 +506,7 @@
         }
 
         function applyPracticeSelection() {
+            const groupPool = getGroupPool();
             const checked = [...document.querySelectorAll('#practice-picker input[type="checkbox"]:checked')]
                 .map(checkbox => checkbox.value);
             const errorEl = document.getElementById('practice-customize-error');
@@ -336,7 +515,7 @@
                 return;
             }
             errorEl.innerText = '';
-            pracPoolIds = checked.length === allPeople.length ? null : new Set(checked);
+            pracPoolIds = checked.length === groupPool.length ? null : new Set(checked);
             pracUsedIds = [];
             setPracticeCustomizeVisible(false);
             renderPracticeRound();
@@ -352,7 +531,7 @@
 
         async function enterPractice(options = {}) {
             const { resetSession = true } = options;
-            await ensurePeopleLoaded();
+            await ensureCatalogLoaded(true);
             if (resetSession) pracUsedIds = [];
             setPracticeCustomizeVisible(false);
             showView('view-practice');
@@ -360,6 +539,7 @@
                 history.replaceState(null, '', '/?practice=1');
                 if (window.fhssNav) window.fhssNav.updateActiveLinks();
             }
+            renderPracticeGroupPicker();
             renderPracticeRound();
         }
 
@@ -371,15 +551,32 @@
             renderPracticeRound();
         }
 
+        function clearPracticeQuizUi(message) {
+            const photo = document.getElementById('prac-photo');
+            const photoContainer = photo?.closest('.photo-container');
+            const fieldsContainer = document.getElementById('prac-options-fields');
+            const feedback = document.getElementById('prac-feedback');
+            if (photo) photo.removeAttribute('src');
+            if (photoContainer) photoContainer.classList.add('hidden');
+            if (fieldsContainer) fieldsContainer.innerHTML = '';
+            feedback.innerText = message;
+            feedback.style.color = '';
+            document.getElementById('prac-submit-btn').classList.add('hidden');
+            document.getElementById('prac-next-btn').classList.add('hidden');
+            pracTarget = null;
+        }
+
         function renderPracticeRound() {
             updatePracticeMeta();
             const pool = getPracticePool();
+            if (pracSelectedGroups.length === 0) {
+                clearPracticeQuizUi('Select one or more quiz groups above to begin.');
+                return;
+            }
             if (allPeople.length === 0 || pool.length === 0) {
-                document.getElementById('prac-feedback').innerText = pool.length === 0 && allPeople.length > 0
-                    ? 'No people selected. Use Customize Practice to choose who to study.'
-                    : 'No staff are available yet.';
-                document.getElementById('prac-submit-btn').classList.add('hidden');
-                document.getElementById('prac-next-btn').classList.add('hidden');
+                clearPracticeQuizUi(pool.length === 0 && allPeople.length > 0
+                    ? 'No entries in the selected groups. Choose another group or add roster items in Host → Staff Manager.'
+                    : 'No staff are available yet.');
                 return;
             }
 
@@ -391,34 +588,36 @@
             pracTarget = available[Math.floor(Math.random() * available.length)];
             pracUsedIds.push(pracTarget.id);
             updatePracticeMeta();
-            pracSelectedName = null;
-            pracSelectedPos = null;
+            pracGuessFields = mergePracticeGuessFields();
+            pracSelectedAnswers = {};
 
-            document.getElementById('prac-photo').src = pracTarget.image ? '/' + pracTarget.image : '';
-            document.getElementById('prac-feedback').innerText = '';
+            const photo = document.getElementById('prac-photo');
+            const photoContainer = photo?.closest('.photo-container');
+            if (photoContainer) photoContainer.classList.remove('hidden');
+            photo.src = pracTarget.image ? '/' + pracTarget.image : '';
+            const feedback = document.getElementById('prac-feedback');
+            feedback.innerText = '';
+            feedback.style.color = '';
             document.getElementById('prac-submit-btn').classList.remove('hidden');
             document.getElementById('prac-submit-btn').disabled = true;
             document.getElementById('prac-next-btn').classList.add('hidden');
 
-            const targetGender = pracTarget.gender || 'F';
-            const sameGenderPeople = allPeople.filter(person => (person.gender || 'F') === targetGender);
-            const namePool = sameGenderPeople.length >= 4 ? sameGenderPeople : allPeople;
-            let names = [pracTarget.name, ...shuffleUnique(namePool.map(person => person.name).filter(name => name !== pracTarget.name)).slice(0, 3)];
-            let pos = [pracTarget.position, ...shuffleUnique(allPeople.map(person => person.position).filter(position => position !== pracTarget.position)).slice(0, 3)];
-            names = shuffleUnique(names);
-            pos = shuffleUnique(pos);
-
-            const nContainer = document.getElementById('prac-options-name');
-            nContainer.innerHTML = '';
-            names.forEach(name => {
-                nContainer.innerHTML += `<button class="option-btn" onclick="selectPracName('${name.replace(/'/g, "\\'")}')">${name}</button>`;
+            const optionsByField = {};
+            pracGuessFields.forEach(field => {
+                const correct = getPersonFieldValue(pracTarget, field.id);
+                let sourcePool = pool;
+                if (field.filter_by_gender) {
+                    const targetGender = getPersonFieldValue(pracTarget, 'gender') || 'F';
+                    const sameGender = pool.filter(person => (getPersonFieldValue(person, 'gender') || 'F') === targetGender);
+                    if (sameGender.length >= 4) sourcePool = sameGender;
+                }
+                const distractors = shuffleUnique(
+                    sourcePool.map(person => getPersonFieldValue(person, field.id)).filter(value => value && value !== correct)
+                ).slice(0, 3);
+                optionsByField[field.id] = shuffleUnique([correct, ...distractors].filter(Boolean));
             });
 
-            const pContainer = document.getElementById('prac-options-pos');
-            pContainer.innerHTML = '';
-            pos.forEach(position => {
-                pContainer.innerHTML += `<button class="option-btn" onclick="selectPracPos('${position.replace(/'/g, "\\'")}')">${position}</button>`;
-            });
+            renderOptionSections('prac-options-fields', pracGuessFields, optionsByField, 'selectPracAnswer');
         }
 
         function showPlayerJoin() {
@@ -505,7 +704,8 @@
         }
 
         function submitAnswer() {
-            if (!selectedName || !selectedPos) return;
+            if (!currentGuessFields.length) return;
+            if (!currentGuessFields.every(field => selectedAnswers[field.id])) return;
 
             fetch('/api/answer', {
                 method: 'POST',
@@ -513,8 +713,9 @@
                 body: JSON.stringify({
                     code: gameCode,
                     team_id: teamId,
-                    name: selectedName,
-                    position: selectedPos
+                    answers: selectedAnswers,
+                    name: selectedAnswers.name,
+                    position: selectedAnswers.position || selectedAnswers.abbreviation
                 })
             }).then(() => {
                 document.getElementById('waiting-title').innerText = "Answer Submitted!";
@@ -522,24 +723,18 @@
             });
         }
 
-        function selectName(name) {
-            selectedName = name;
-            document.querySelectorAll('#options-name .option-btn').forEach(b => {
-                b.classList.toggle('selected', b.innerText === name);
-            });
-            checkSubmit();
-        }
-
-        function selectPos(pos) {
-            selectedPos = pos;
-            document.querySelectorAll('#options-pos .option-btn').forEach(b => {
-                b.classList.toggle('selected', b.innerText === pos);
+        function selectAnswer(fieldId, value) {
+            selectedAnswers[fieldId] = value;
+            document.querySelectorAll(`#player-options-fields [data-field-id="${fieldId}"] .option-btn`).forEach(b => {
+                b.classList.toggle('selected', b.innerText === value);
             });
             checkSubmit();
         }
 
         function checkSubmit() {
-            document.getElementById('submit-btn').disabled = !(selectedName && selectedPos);
+            const ready = currentGuessFields.length > 0
+                && currentGuessFields.every(field => selectedAnswers[field.id]);
+            document.getElementById('submit-btn').disabled = !ready;
         }
 
         function showView(id) {
@@ -572,39 +767,39 @@
             return unique;
         }
 
-        function selectPracName(name) {
-            pracSelectedName = name;
-            document.querySelectorAll('#prac-options-name .option-btn').forEach(b => {
-                b.classList.toggle('selected', b.innerText === name);
+        function selectPracAnswer(fieldId, value) {
+            pracSelectedAnswers[fieldId] = value;
+            document.querySelectorAll(`#prac-options-fields [data-field-id="${fieldId}"] .option-btn`).forEach(b => {
+                b.classList.toggle('selected', b.innerText === value);
             });
-            document.getElementById('prac-submit-btn').disabled = !(pracSelectedName && pracSelectedPos);
-        }
-
-        function selectPracPos(pos) {
-            pracSelectedPos = pos;
-            document.querySelectorAll('#prac-options-pos .option-btn').forEach(b => {
-                b.classList.toggle('selected', b.innerText === pos);
-            });
-            document.getElementById('prac-submit-btn').disabled = !(pracSelectedName && pracSelectedPos);
+            const ready = pracGuessFields.length > 0
+                && pracGuessFields.every(field => pracSelectedAnswers[field.id]);
+            document.getElementById('prac-submit-btn').disabled = !ready;
         }
 
         function submitPractice() {
-            let correctName = (pracSelectedName === pracTarget.name);
-            let correctPos = (pracSelectedPos === pracTarget.position);
+            const results = pracGuessFields.map(field => {
+                const expected = getPersonFieldValue(pracTarget, field.id);
+                const given = pracSelectedAnswers[field.id];
+                return { field, expected, correct: given === expected };
+            });
+            const allCorrect = results.every(item => item.correct);
+            const someCorrect = results.some(item => item.correct);
 
             let feedback = document.getElementById('prac-feedback');
-            if (correctName && correctPos) {
-                feedback.innerText = "Perfect! Both correct.";
+            if (allCorrect) {
+                feedback.innerText = "Perfect! All correct.";
                 feedback.style.color = "var(--success)";
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            } else if (correctName) {
-                feedback.innerText = "Name correct, Position wrong! (Correct position: " + pracTarget.position + ")";
-                feedback.style.color = "var(--warning)";
-            } else if (correctPos) {
-                feedback.innerText = "Position correct, Name wrong! (Correct name: " + pracTarget.name + ")";
-                feedback.style.color = "var(--warning)";
+            } else if (someCorrect) {
+                const wrong = results.filter(item => !item.correct)
+                    .map(item => `${item.field.label}: ${item.expected}`)
+                    .join(' · ');
+                feedback.innerText = "Partially correct. " + wrong;
+                feedback.style.color = "var(--warning, #b45309)";
             } else {
-                feedback.innerText = `Both wrong! It's ${pracTarget.name} (${pracTarget.position})`;
+                const answers = results.map(item => `${item.field.label}: ${item.expected}`).join(' · ');
+                feedback.innerText = "Incorrect. " + answers;
                 feedback.style.color = "var(--danger)";
             }
 
@@ -631,22 +826,21 @@
                 }
 
                 if (currentState !== 'question') {
-                    selectedName = null;
-                    selectedPos = null;
+                    selectedAnswers = {};
+                    currentGuessFields = Array.isArray(state.guess_fields) && state.guess_fields.length
+                        ? state.guess_fields
+                        : [
+                            { id: 'name', label: 'Name' },
+                            { id: 'position', label: 'Position' }
+                        ];
+                    const optionsByField = state.options && typeof state.options === 'object'
+                        ? state.options
+                        : {
+                            name: state.options_name || [],
+                            position: state.options_pos || []
+                        };
                     checkSubmit();
-
-                    const nContainer = document.getElementById('options-name');
-                    nContainer.innerHTML = '';
-                    state.options_name.forEach(n => {
-                        nContainer.innerHTML += `<button class="option-btn" onclick="selectName('${n.replace(/'/g, "\\'")}')">${n}</button>`;
-                    });
-
-                    const pContainer = document.getElementById('options-pos');
-                    pContainer.innerHTML = '';
-                    state.options_pos.forEach(p => {
-                        pContainer.innerHTML += `<button class="option-btn" onclick="selectPos('${p.replace(/'/g, "\\'")}')">${p}</button>`;
-                    });
-
+                    renderOptionSections('player-options-fields', currentGuessFields, optionsByField, 'selectAnswer');
                     showView('view-question');
                     currentState = 'question';
                 }
@@ -684,11 +878,20 @@
                     }
                     document.getElementById('result-title').innerText = "Round Over";
                     document.getElementById('result-score').innerText = team.score + " pts (Total)";
-                    document.getElementById('result-desc').innerHTML = `
-                        Name: ${team.correct_name ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'} <br>
-                        Position: ${team.correct_pos ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'}
-                    `;
-                    if (team.correct_name && team.correct_pos) {
+                    const correctFields = team.correct_fields || {
+                        name: team.correct_name,
+                        position: team.correct_pos
+                    };
+                    const fieldLines = (state.guess_fields || currentGuessFields || [
+                        { id: 'name', label: 'Name' },
+                        { id: 'position', label: 'Position' }
+                    ]).map(field => {
+                        const ok = Boolean(correctFields[field.id]);
+                        return `${escapeHtml(field.label)}: ${ok ? '<span class="correct-ans">Correct</span>' : '<span class="wrong-ans">Wrong</span>'}`;
+                    });
+                    document.getElementById('result-desc').innerHTML = fieldLines.join('<br>');
+                    const allCorrect = fieldLines.length > 0 && (state.guess_fields || currentGuessFields || []).every(field => correctFields[field.id]);
+                    if (allCorrect || (team.correct_name && team.correct_pos)) {
                         confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
                     }
                     showView('view-result');

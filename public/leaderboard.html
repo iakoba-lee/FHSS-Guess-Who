@@ -11,14 +11,15 @@
     <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
 
-    <link rel="stylesheet" href="style.css">
-    <script src="nav.js?v=4" defer></script>
+    <link rel="stylesheet" href="style.css?v=16">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="nav.js?v=7" defer></script>
 </head>
 <body>
     <div class="containing-element">
         <byu-header>
             <a slot="logo" href="https://www.byu.edu" target="_blank">
-                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+                <img src="https://cdn.byu.edu/shared-icons/latest/logos/monogram-white.svg" alt="BYU Logo">
             </a>
             <span slot="site-title">
                 <a href="/">FHSS Guess Who</a>
@@ -38,8 +39,13 @@
         <main class="page-content leaderboard-page">
             <div class="container">
                 <div class="glass-panel">
-                    <h1>All-Time Top 10</h1>
-                    <p class="intro-text">Highest team scores from completed games.</p>
+                    <h1 id="leaderboard-title">Top 10</h1>
+                    <p class="intro-text" id="leaderboard-intro">Highest team scores from completed games.</p>
+
+                    <div class="leaderboard-view-picker">
+                        <div class="leaderboard-tabs" id="leaderboard-tabs" role="tablist" aria-label="Leaderboard groups"></div>
+                    </div>
+
                     <div class="top-scores-board" id="top-scores-board">
                         <p class="empty-state">Loading scores...</p>
                     </div>
@@ -51,6 +57,23 @@
     </div>
 
     <script>
+        const ALL_LEADERBOARD = {
+            id: 'all',
+            label: 'All',
+            description: 'Scores from every game mode, including combined groups'
+        };
+        const DEFAULT_GROUPS = [
+            { id: 'clients', label: 'Clients', description: 'Important FHSS staff and faculty clients' },
+            { id: 'internal-staff', label: 'Internal Staff', description: 'People within FHSS Computing Services' },
+            { id: 'locations', label: 'Locations', description: 'FHSS buildings and locations' },
+            { id: 'departments', label: 'Departments', description: 'FHSS departments we service' }
+        ];
+
+        let groupsCatalog = DEFAULT_GROUPS.slice();
+        let activeGroup = 'all';
+        /** @type {Record<string, string>} groupId → top team_name */
+        let groupChampions = {};
+
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({
                 '&': '&amp;',
@@ -70,34 +93,388 @@
             });
         }
 
+        function leaderboardTabs() {
+            return [ALL_LEADERBOARD, ...groupsCatalog];
+        }
+
+        function activeGroupMeta() {
+            if (activeGroup === 'all') return ALL_LEADERBOARD;
+            return groupsCatalog.find(group => group.id === activeGroup) ||
+                DEFAULT_GROUPS.find(group => group.id === activeGroup) || {
+                    id: activeGroup,
+                    label: activeGroup,
+                    description: ''
+                };
+        }
+
+        function formatModeLabel(entry) {
+            const ids = Array.isArray(entry.groups) && entry.groups.length
+                ? entry.groups
+                : String(entry.groups_key || 'clients').split('+').filter(Boolean);
+            if (ids.length === 0) return 'Unknown';
+            return ids.map(id => {
+                const group = groupsCatalog.find(item => item.id === id)
+                    || DEFAULT_GROUPS.find(item => item.id === id);
+                return group ? group.label : id;
+            }).join(' + ');
+        }
+
+        function normalizeChampionName(name) {
+            return String(name || '').trim().toLowerCase();
+        }
+
+        function tabsWithDistinctChampions() {
+            const groupIds = groupsCatalog.map(group => group.id);
+            const champions = groupIds
+                .map(id => ({ id, name: normalizeChampionName(groupChampions[id]) }))
+                .filter(item => item.name);
+            if (champions.length < 2) return new Set();
+            const uniqueNames = new Set(champions.map(item => item.name));
+            if (uniqueNames.size < 2) return new Set();
+            return new Set(champions.map(item => item.id));
+        }
+
+        async function loadGroupChampions() {
+            const next = {};
+            await Promise.all(groupsCatalog.map(async group => {
+                try {
+                    const response = await fetch('/api/leaderboard?group=' + encodeURIComponent(group.id));
+                    const entries = await response.json();
+                    if (response.ok && Array.isArray(entries) && entries.length > 0) {
+                        next[group.id] = entries[0].team_name || '';
+                    }
+                } catch (error) {
+                    // leave empty — tab simply won't flash
+                }
+            }));
+            groupChampions = next;
+        }
+
+        function updateLeaderboardHeader() {
+            const group = activeGroupMeta();
+            document.getElementById('leaderboard-title').innerText = `${group.label} · Top 10`;
+            document.getElementById('leaderboard-intro').innerText = activeGroup === 'all'
+                ? 'Highest team scores from every completed game, including combined group modes.'
+                : `Highest team scores from completed ${group.label.toLowerCase()}-only games. Question counts show how many items were in that game.`;
+        }
+
+        function renderGroupControls() {
+            const flashingTabs = tabsWithDistinctChampions();
+            const tabs = document.getElementById('leaderboard-tabs');
+            tabs.innerHTML = leaderboardTabs().map(group => {
+                const isActive = group.id === activeGroup;
+                const flash = group.id !== 'all' && flashingTabs.has(group.id);
+                return `
+                <button type="button"
+                    class="leaderboard-tab${isActive ? ' active' : ''}${flash ? ' leaderboard-flash-tab' : ''}"
+                    role="tab"
+                    aria-selected="${isActive ? 'true' : 'false'}"
+                    data-group="${escapeHtml(group.id)}">
+                    ${escapeHtml(group.label)}
+                </button>
+            `;
+            }).join('');
+        }
+
+        async function selectLeaderboardGroup(groupId) {
+            if (!groupId || groupId === activeGroup) {
+                updateLeaderboardHeader();
+                renderGroupControls();
+                return;
+            }
+            activeGroup = groupId;
+            updateLeaderboardHeader();
+            renderGroupControls();
+            await loadTopScores();
+        }
+
+        async function loadGroups() {
+            try {
+                const response = await fetch('/api/groups');
+                const data = await response.json();
+                if (response.ok && Array.isArray(data.groups) && data.groups.length > 0) {
+                    groupsCatalog = data.groups;
+                } else {
+                    groupsCatalog = DEFAULT_GROUPS.slice();
+                }
+            } catch (error) {
+                groupsCatalog = DEFAULT_GROUPS.slice();
+            }
+            activeGroup = 'all';
+            await loadGroupChampions();
+            updateLeaderboardHeader();
+            renderGroupControls();
+        }
+
         async function loadTopScores() {
             const board = document.getElementById('top-scores-board');
 
             try {
-                const response = await fetch('/api/leaderboard');
+                const response = await fetch('/api/leaderboard?group=' + encodeURIComponent(activeGroup));
                 const entries = await response.json();
 
-                if (!Array.isArray(entries) || entries.length === 0) {
-                    board.innerHTML = '<p class="empty-state">No scores recorded yet.</p>';
+                if (!response.ok || !Array.isArray(entries) || entries.length === 0) {
+                    const group = activeGroupMeta();
+                    board.innerHTML = `<p class="empty-state">No scores recorded for ${escapeHtml(group.label)} yet.</p>`;
                     return;
                 }
 
-                board.innerHTML = entries.map((entry, index) => `
-                    <div class="top-score-row">
+                if (activeGroup !== 'all' && entries[0]) {
+                    groupChampions[activeGroup] = entries[0].team_name || '';
+                    renderGroupControls();
+                }
+
+                board.innerHTML = entries.map((entry, index) => {
+                    const questions = entry.questions || entry.rounds || 15;
+                    const mode = formatModeLabel(entry);
+                    const detail = activeGroup === 'all'
+                        ? `${escapeHtml(mode)} · ${questions} questions · ${formatLeaderboardDate(entry.recorded_at)}`
+                        : `${questions} questions · ${formatLeaderboardDate(entry.recorded_at)}`;
+                    const placeClass = index === 0
+                        ? ' top-score-row--gold leaderboard-flash'
+                        : index === 1
+                            ? ' top-score-row--silver leaderboard-flash-silver'
+                            : index === 2
+                                ? ' top-score-row--bronze leaderboard-flash-bronze'
+                                : '';
+                    const medal = index === 0
+                        ? '<button type="button" class="top-score-trophy" aria-label="Celebrate with confetti">🏆</button>'
+                        : index === 1
+                            ? '<span class="top-score-medal top-score-medal--silver" aria-hidden="true">🥈</span>'
+                            : index === 2
+                                ? '<span class="top-score-medal top-score-medal--bronze" aria-hidden="true">🥉</span>'
+                                : '';
+                    return `
+                    <div class="top-score-row${placeClass}">
                         <span class="top-score-rank">#${index + 1}</span>
                         <div class="top-score-details">
                             <strong>${escapeHtml(entry.team_name)}</strong>
-                            <span>${entry.rounds || 15} rounds · ${formatLeaderboardDate(entry.recorded_at)}</span>
+                            <span>${detail}</span>
                         </div>
-                        <span class="top-score-value">${Number(entry.score || 0).toLocaleString()}</span>
+                        <span class="top-score-value">${medal}${Number(entry.score || 0).toLocaleString()}</span>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             } catch (error) {
                 board.innerHTML = '<p class="empty-state error">Unable to load leaderboard.</p>';
             }
         }
 
-        loadTopScores();
+        const CONFETTI_COLORS = ['#FFB700', '#0047BA', '#10A170', '#E61744', '#FFFFFF', '#1FB3D1'];
+
+        function ensureCelebrationLayer() {
+            let layer = document.getElementById('leaderboard-celebration');
+            if (layer) return layer;
+            layer = document.createElement('div');
+            layer.id = 'leaderboard-celebration';
+            layer.className = 'leaderboard-celebration';
+            layer.setAttribute('aria-hidden', 'true');
+
+            const leftSlots = [
+                { top: '18%', size: '4.2rem', delay: '0s' },
+                { top: '34%', size: '5.4rem', delay: '0.08s' },
+                { top: '50%', size: '6.2rem', delay: '0s' },
+                { top: '66%', size: '5rem', delay: '0.12s' },
+                { top: '82%', size: '4.5rem', delay: '0.05s' }
+            ];
+            const rightSlots = [
+                { top: '16%', size: '4.4rem', delay: '0.04s' },
+                { top: '32%', size: '5.8rem', delay: '0.1s' },
+                { top: '48%', size: '6.4rem', delay: '0.02s' },
+                { top: '64%', size: '5.2rem', delay: '0.14s' },
+                { top: '80%', size: '4.6rem', delay: '0.06s' }
+            ];
+
+            layer.innerHTML = [
+                ...leftSlots.map((slot, i) => `
+                    <div class="celebration-trumpet celebration-trumpet--left"
+                        style="--trumpet-top:${slot.top};--trumpet-size:${slot.size};--trumpet-delay:${slot.delay};--trumpet-index:${i}">🎺</div>
+                `),
+                ...rightSlots.map((slot, i) => `
+                    <div class="celebration-trumpet celebration-trumpet--right"
+                        style="--trumpet-top:${slot.top};--trumpet-size:${slot.size};--trumpet-delay:${slot.delay};--trumpet-index:${i}">🎺</div>
+                `)
+            ].join('');
+
+            document.body.appendChild(layer);
+            return layer;
+        }
+
+        function fireFromTrumpets() {
+            if (typeof confetti !== 'function') return;
+            const leftOrigins = [0.06, 0.1, 0.14];
+            const rightOrigins = [0.86, 0.9, 0.94];
+            const heights = [0.22, 0.4, 0.55, 0.7, 0.82];
+
+            leftOrigins.forEach((x, i) => {
+                confetti({
+                    particleCount: 10,
+                    angle: 55 + i * 8,
+                    spread: 60,
+                    startVelocity: 48 + i * 4,
+                    origin: { x, y: heights[i % heights.length] },
+                    colors: CONFETTI_COLORS
+                });
+            });
+            rightOrigins.forEach((x, i) => {
+                confetti({
+                    particleCount: 10,
+                    angle: 125 - i * 8,
+                    spread: 60,
+                    startVelocity: 48 + i * 4,
+                    origin: { x, y: heights[(i + 2) % heights.length] },
+                    colors: CONFETTI_COLORS
+                });
+            });
+        }
+
+        function summonTrumpets() {
+            const layer = ensureCelebrationLayer();
+            layer.classList.remove('is-active');
+            // restart CSS animation
+            void layer.offsetWidth;
+            layer.classList.add('is-active');
+
+            const burstUntil = Date.now() + 2400;
+            let lastShot = 0;
+            (function trumpetBurst(now) {
+                if (now - lastShot >= 85) {
+                    fireFromTrumpets();
+                    lastShot = now;
+                }
+                if (Date.now() < burstUntil) {
+                    requestAnimationFrame(trumpetBurst);
+                } else {
+                    layer.classList.remove('is-active');
+                }
+            }(performance.now()));
+        }
+
+        function sprayTrophyConfetti(event) {
+            if (typeof confetti !== 'function') return;
+            const x = event.clientX / window.innerWidth;
+            const y = event.clientY / window.innerHeight;
+            const colors = CONFETTI_COLORS;
+
+            summonTrumpets();
+
+            confetti({
+                particleCount: 220,
+                spread: 100,
+                startVelocity: 55,
+                origin: { x, y },
+                colors
+            });
+            confetti({
+                particleCount: 180,
+                spread: 160,
+                startVelocity: 40,
+                decay: 0.91,
+                scalar: 1.15,
+                origin: { x, y },
+                colors
+            });
+            confetti({
+                particleCount: 120,
+                angle: 60,
+                spread: 80,
+                startVelocity: 50,
+                origin: { x: Math.max(0.05, x - 0.08), y },
+                colors
+            });
+            confetti({
+                particleCount: 120,
+                angle: 120,
+                spread: 80,
+                startVelocity: 50,
+                origin: { x: Math.min(0.95, x + 0.08), y },
+                colors
+            });
+
+            const end = Date.now() + 900;
+            (function frame() {
+                confetti({
+                    particleCount: 18,
+                    spread: 120,
+                    startVelocity: 35,
+                    origin: { x, y },
+                    colors
+                });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        function celebrateLeaderboardArrival() {
+            if (typeof confetti !== 'function') return;
+            summonTrumpets();
+            confetti({
+                particleCount: 220,
+                spread: 100,
+                startVelocity: 55,
+                origin: { x: 0.5, y: 0.25 },
+                colors: CONFETTI_COLORS
+            });
+            confetti({
+                particleCount: 160,
+                spread: 140,
+                startVelocity: 40,
+                decay: 0.91,
+                scalar: 1.1,
+                origin: { x: 0.5, y: 0.35 },
+                colors: CONFETTI_COLORS
+            });
+            confetti({
+                particleCount: 100,
+                angle: 60,
+                spread: 70,
+                startVelocity: 50,
+                origin: { x: 0.2, y: 0.4 },
+                colors: CONFETTI_COLORS
+            });
+            confetti({
+                particleCount: 100,
+                angle: 120,
+                spread: 70,
+                startVelocity: 50,
+                origin: { x: 0.8, y: 0.4 },
+                colors: CONFETTI_COLORS
+            });
+
+            const end = Date.now() + 800;
+            (function frame() {
+                confetti({
+                    particleCount: 16,
+                    spread: 110,
+                    startVelocity: 32,
+                    origin: { x: 0.5, y: 0.3 },
+                    colors: CONFETTI_COLORS
+                });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        document.getElementById('leaderboard-tabs').addEventListener('click', event => {
+            const button = event.target.closest('[data-group]');
+            if (!button) return;
+            selectLeaderboardGroup(button.getAttribute('data-group'));
+        });
+
+        document.getElementById('top-scores-board').addEventListener('click', event => {
+            const trophy = event.target.closest('.top-score-trophy');
+            if (!trophy) return;
+            sprayTrophyConfetti(event);
+        });
+
+        (async function initLeaderboard() {
+            renderGroupControls();
+            updateLeaderboardHeader();
+            await loadGroups();
+            await loadTopScores();
+            // Let the page paint, then celebrate arrival.
+            requestAnimationFrame(() => {
+                setTimeout(celebrateLeaderboardArrival, 120);
+            });
+        })();
     </script>
 </body>
 </html>

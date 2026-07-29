@@ -13,8 +13,9 @@ RUN npm install --omit=dev
 # Copy the rest of the application
 COPY . .
 
-# Create uploads directory to ensure it exists
-RUN mkdir -p public/uploads
+# Keep a seed copy of data/ outside the persistent volume mount path
+RUN mkdir -p public/uploads \
+  && if [ -d data ]; then cp -a data seed-data; else mkdir -p data seed-data; fi
 
 EXPOSE 8080
 

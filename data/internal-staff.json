@@ -1,0 +1,72 @@
+[
+    {
+        "name": "Tom Pittman",
+        "position": "Director",
+        "image": "media/image36.jpg",
+        "gender": "M",
+        "id": "tom-pittman-director-30",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Amy Lilly",
+        "position": "Office Manager",
+        "image": "media/image37.jpg",
+        "gender": "F",
+        "id": "amy-lilly-office-manager-31",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Aaron Barnes",
+        "position": "Asset Manager",
+        "image": "media/image38.jpeg",
+        "gender": "F",
+        "id": "a-aron-barnes-software-manager-32",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Tyler Holland",
+        "position": "Systems Administrator",
+        "image": "media/image39.jpg",
+        "gender": "M",
+        "id": "tyler-holland-systems-administrator-33",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Jason Harvey",
+        "position": "Desktop Support Manager",
+        "image": "media/image40.jpg",
+        "gender": "M",
+        "id": "jason-harvey-desktop-support-manager-34",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Alden Transfiguracion",
+        "position": "CFHG Web Developer",
+        "image": "media/image42.jpeg",
+        "gender": "M",
+        "id": "alden-transfiguracion-cfhg-web-developer-36",
+        "groups": [
+            "internal-staff"
+        ]
+    },
+    {
+        "name": "Chris Fox",
+        "position": "Digital Media Manager",
+        "image": "media/image43.jpg",
+        "gender": "M",
+        "id": "chris-fox-digital-media-manager-37",
+        "groups": [
+            "internal-staff"
+        ]
+    }
+]

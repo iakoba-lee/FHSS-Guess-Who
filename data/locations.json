@@ -1,0 +1,134 @@
+[
+    {
+        "name": "Spencer W. Kimball Tower",
+        "position": "KMBL",
+        "image": "media/location-kmbl.png",
+        "gender": "F",
+        "id": "spencer-w-kimball-tower-kmbl-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "Joseph F. Smith Building",
+        "position": "JFSB",
+        "image": "media/location-jfsb.png",
+        "gender": "F",
+        "id": "joseph-f-smith-building-jfsb-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "West View Building",
+        "position": "WVB",
+        "image": "uploads/1785270519737-wvb-jpg.jpg",
+        "gender": "F",
+        "groups": [
+            "locations"
+        ],
+        "values": {
+            "abbreviation": "WVB"
+        },
+        "id": "west-view-building-wvb-location"
+    },
+    {
+        "name": "John Taylor Building (Comprehensive Clinic)",
+        "position": "TLRB",
+        "image": "media/location-tlrb.png",
+        "gender": "F",
+        "id": "john-taylor-building-tlrb-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "Milton A. Barlow Center (Washington, D.C.)",
+        "position": "BC/DC",
+        "image": "uploads/1785270731129-barlow-jpg.jpg",
+        "gender": "F",
+        "groups": [
+            "locations"
+        ],
+        "values": {
+            "abbreviation": "BC/DC"
+        },
+        "id": "milton-a-barlow-center-location"
+    },
+    {
+        "name": "Museum of Peoples and Cultures",
+        "position": "MPC",
+        "image": "media/location-mpc.png",
+        "gender": "F",
+        "id": "museum-of-peoples-and-cultures-mpc-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "Howard S. McDonald Building",
+        "position": "MCDB",
+        "image": "media/location-mcdb.png",
+        "gender": "F",
+        "id": "howard-s-mcdonald-building-mcdb-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "Harold B. Lee Library",
+        "position": "HBLL",
+        "image": "media/location-hbll.png",
+        "gender": "F",
+        "id": "harold-b-lee-library-hbll-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "Herald R. Clark Building (Kennedy Center)",
+        "position": "HRCB",
+        "image": "uploads/1785270604345-hrcb-jpg.jpg",
+        "gender": "F",
+        "groups": [
+            "locations"
+        ],
+        "values": {
+            "abbreviation": "HRCB"
+        },
+        "id": "herald-r-clark-building-hrcb-location"
+    },
+    {
+        "name": "Stephen L. Richards Building",
+        "position": "RB",
+        "image": "media/location-rb.png",
+        "gender": "F",
+        "id": "stephen-l-richards-building-rb-location",
+        "groups": [
+            "locations"
+        ]
+    },
+    {
+        "name": "University Parkway Center",
+        "position": "UPC",
+        "image": "uploads/1785270784062-upc-jpg.jpg",
+        "gender": "F",
+        "groups": [
+            "locations"
+        ],
+        "values": {
+            "abbreviation": "UPC"
+        },
+        "id": "university-parkway-center-upc-location"
+    },
+    {
+        "name": "John Taylor Building Annex",
+        "position": "TLRB A",
+        "image": "",
+        "gender": "F",
+        "id": "john-taylor-building-annex-tlrb-a-location",
+        "groups": [
+            "locations"
+        ]
+    }
+]

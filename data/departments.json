@@ -1,0 +1,92 @@
+[
+    {
+        "name": "Anthropology",
+        "position": "ANTHR",
+        "image": "media/department-anthropology.png",
+        "gender": "F",
+        "id": "anthropology-department-75",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "Economics",
+        "position": "ECON",
+        "image": "media/department-economics.png",
+        "gender": "F",
+        "id": "economics-department-77",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "Geography",
+        "position": "GEOG",
+        "image": "media/department-geography.png",
+        "gender": "F",
+        "id": "geography-department-79",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "History",
+        "position": "HIST",
+        "image": "media/department-history.png",
+        "gender": "F",
+        "id": "history-department-81",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "Political Science",
+        "position": "POLI",
+        "image": "media/department-political-science.png",
+        "gender": "F",
+        "id": "political-science-department-83",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "Psychology",
+        "position": "PSYCH",
+        "image": "media/department-psychology.png",
+        "gender": "F",
+        "id": "psychology-department-85",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "School of Family Life",
+        "position": "SFL",
+        "image": "media/department-family-life.png",
+        "gender": "F",
+        "id": "school-of-family-life-department-87",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "School of Social Work",
+        "position": "SOCW",
+        "image": "media/department-social-work.png",
+        "gender": "F",
+        "id": "school-of-social-work-department-89",
+        "groups": [
+            "departments"
+        ]
+    },
+    {
+        "name": "Sociology",
+        "position": "SOC",
+        "image": "media/department-sociology.png",
+        "gender": "F",
+        "id": "sociology-department-91",
+        "groups": [
+            "departments"
+        ]
+    }
+]

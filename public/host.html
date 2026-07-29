@@ -12,8 +12,8 @@
     <script async src="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.js"></script>
     <link rel="stylesheet" href="https://cdn.byu.edu/byu-theme-components/2.x.x/byu-theme-components.min.css" media="all">
 
-    <link rel="stylesheet" href="style.css">
-    <script src="nav.js?v=4" defer></script>
+    <link rel="stylesheet" href="style.css?v=16">
+    <script src="nav.js?v=7" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
@@ -21,7 +21,7 @@
     <div class="containing-element">
         <byu-header>
             <a slot="logo" href="https://www.byu.edu" target="_blank">
-                <img src="https://cdn.byu.edu/shared-icons/latest/byu-logos/byu-logo-white.svg" alt="BYU Logo">
+                <img src="https://cdn.byu.edu/shared-icons/latest/logos/monogram-white.svg" alt="BYU Logo">
             </a>
             <span slot="site-title">
                 <a href="/">FHSS Guess Who</a>
@@ -98,45 +98,88 @@
                         <div class="section-header">
                             <div>
                                 <h2>Staff Manager</h2>
-                                <p>Keep the game roster current as staff join or leave FHSS.</p>
+                                <p>Edit a quiz group to update its details and add roster entries for that pool.</p>
                             </div>
-                            <button type="button" class="small-btn" onclick="resetStaffForm()">New Staff</button>
+                            <div class="section-header-actions">
+                                <button type="button" class="small-btn subtle-btn" onclick="openAddGroupEditor()">Add Group</button>
+                            </div>
                         </div>
 
-                        <form id="staff-form" class="staff-form">
-                            <input type="hidden" id="staff-id" />
-                            <div class="form-grid">
-                                <label>
-                                    Name
-                                    <input type="text" id="staff-name" required placeholder="Full name" />
-                                </label>
-                                <label>
-                                    Position
-                                    <input type="text" id="staff-position" required placeholder="Role or title" />
-                                </label>
-                                <label>
-                                    Gender for Name Options
-                                    <select id="staff-gender">
-                                        <option value="F">F</option>
-                                        <option value="M">M</option>
-                                    </select>
-                                </label>
-                                <label>
-                                    Photo
-                                    <input type="file" id="staff-photo" accept="image/png,image/jpeg,image/gif,image/webp" />
-                                </label>
+                        <div class="group-manager" id="group-manager">
+                            <div class="group-manager-header">
+                                <div>
+                                    <h3>Quiz Groups</h3>
+                                    <p>Choose a group to edit its name and manage its people.</p>
+                                </div>
                             </div>
-                            <div class="staff-preview hidden" id="staff-preview-wrapper">
-                                <img id="staff-preview" alt="Selected staff preview" />
-                                <button type="button" class="small-btn subtle-btn" onclick="clearStaffPhoto()">Keep Existing Photo</button>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" id="staff-submit">Add Staff</button>
-                                <button type="button" class="subtle-btn" onclick="resetStaffForm()">Clear</button>
-                            </div>
-                            <p id="staff-message" class="staff-message"></p>
-                        </form>
+                            <div class="group-manager-list" id="group-manager-list"></div>
+                        </div>
 
+                        <div class="manager-editor hidden" id="manager-editor">
+                            <div class="manager-editor-header">
+                                <div>
+                                    <h3 id="manager-editor-title">Edit Group</h3>
+                                    <p id="manager-editor-subtitle">Update group details and add people to this pool.</p>
+                                </div>
+                            </div>
+
+                            <form id="group-form" class="group-form">
+                                <input type="hidden" id="group-edit-id" />
+                                <div id="group-details-panel">
+                                    <div class="manager-editor-section-label">Group details</div>
+                                    <div class="form-grid" id="group-details-fields">
+                                        <label>
+                                            Label
+                                            <input type="text" id="group-label" required placeholder="e.g. Locations" />
+                                        </label>
+                                        <label>
+                                            Description
+                                            <input type="text" id="group-description" placeholder="Optional short description" />
+                                        </label>
+                                        <label class="group-category-label">
+                                            Entry type
+                                            <select id="group-entry-category">
+                                                <option value="person">Person</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                            <span class="field-hint">Person: name, position, gender. Other: full name, abbreviation.</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" id="group-submit">Save Group</button>
+                                    <button type="button" class="subtle-btn" id="edit-group-btn" onclick="setManagerEditorView('group')">Edit Group</button>
+                                    <button type="button" class="subtle-btn" id="add-new-btn" onclick="setManagerEditorView('entry')">Add New</button>
+                                    <button type="button" class="subtle-btn" onclick="closeManagerEditor()">Close</button>
+                                </div>
+                                <p id="group-message" class="staff-message"></p>
+                            </form>
+
+                            <form id="staff-form" class="staff-form hidden">
+                                <input type="hidden" id="staff-id" />
+                                <div class="manager-editor-section-label">Roster entry</div>
+                                <div id="staff-dynamic-fields"></div>
+                                <fieldset class="staff-groups-fieldset">
+                                    <legend>Groups</legend>
+                                    <div class="group-picker-options" id="staff-group-options"></div>
+                                </fieldset>
+                                <div class="staff-preview hidden" id="staff-preview-wrapper">
+                                    <img id="staff-preview" alt="Selected staff preview" />
+                                    <button type="button" class="small-btn subtle-btn" onclick="clearStaffPhoto()">Keep Existing Photo</button>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" id="staff-submit">Add Entry</button>
+                                    <button type="button" class="subtle-btn" onclick="resetStaffForm()">Clear Entry</button>
+                                    <button type="button" class="subtle-btn" onclick="closeManagerEditor()">Close</button>
+                                </div>
+                                <p id="staff-message" class="staff-message"></p>
+                            </form>
+                        </div>
+
+                        <div class="staff-list-toolbar">
+                            <div class="staff-filter-tabs" id="staff-filter-tabs" role="tablist" aria-label="Filter roster by group"></div>
+                            <p class="staff-filter-count" id="staff-filter-count"></p>
+                        </div>
                         <div class="staff-list" id="staff-list"></div>
                     </div>
                 </div>
@@ -160,7 +203,7 @@
                     </div>
                     <div class="staff-roster-block">
                         <div class="staff-roster-corner">
-                            <span>Staff in System</span>
+                            <span>Max Guessable Items</span>
                             <strong id="staff-count">—</strong>
                         </div>
                     </div>
@@ -187,19 +230,24 @@
         <div class="game-settings-panel glass-panel">
             <button type="button" class="game-settings-close" id="game-settings-close" aria-label="Close">×</button>
             <h2 id="game-settings-title">Game Settings</h2>
-            <p class="game-settings-hint" id="game-settings-hint">Set the time limit and number of rounds, then open the lobby for players to join.</p>
+            <p class="game-settings-hint" id="game-settings-hint">Choose groups, time limit, and questions, then open the lobby.</p>
             <div class="game-settings-fields">
                 <div class="host-time-limit">
                     <label for="time-limit">Time Limit</label>
                     <input type="number" id="time-limit" value="30" min="5" max="120" />
                 </div>
                 <div class="host-time-limit">
-                    <label for="round-count">Rounds</label>
+                    <label for="round-count">Questions</label>
                     <select id="round-count">
                         <option value="15" selected>15</option>
                         <option value="30">30</option>
                     </select>
                 </div>
+            </div>
+            <div class="group-picker host-group-picker" id="host-group-picker">
+                <p class="group-picker-label">Quiz groups</p>
+                <div class="group-picker-options" id="host-group-options"></div>
+                <p class="group-picker-count" id="host-group-count"></p>
             </div>
             <div class="game-settings-actions">
                 <button type="button" class="host-control" id="modal-open-lobby">Open Lobby</button>
@@ -220,10 +268,653 @@
         let pendingMaxRounds = null;
         let settingsModalInitial = false;
         let staffPeople = [];
+        let groupsCatalog = [];
+        let hostSelectedGroups = ['clients'];
+        let staffFilterGroup = 'all';
+        let managerEditorView = 'group';
         let currentPhotoData = null;
         let managerPassword = sessionStorage.getItem('fhssManagerPassword') || '';
         let podiumRevealSessionKey = '';
         let podiumRevealTimeouts = [];
+
+        function personInGroups(person, groupIds) {
+            const personGroups = Array.isArray(person.groups) && person.groups.length
+                ? person.groups
+                : ['clients'];
+            return groupIds.some(id => personGroups.includes(id));
+        }
+
+        function getHostPoolSize(groupIds = hostSelectedGroups) {
+            return staffPeople.filter(person => personInGroups(person, groupIds)).length;
+        }
+
+        function getFilteredStaff() {
+            if (staffFilterGroup === 'all') return staffPeople;
+            return staffPeople.filter(person => personInGroups(person, [staffFilterGroup]));
+        }
+
+        function defaultStaffFormGroups() {
+            return staffFilterGroup !== 'all' ? [staffFilterGroup] : ['clients'];
+        }
+
+        const FALLBACK_GROUPS = [
+            { id: 'clients', label: 'Clients', description: 'FHSS staff and faculty clients' },
+            { id: 'internal-staff', label: 'Internal Staff', description: 'FHSS Computing Services' },
+            { id: 'locations', label: 'Locations', description: 'FHSS buildings and locations' },
+            { id: 'departments', label: 'Departments', description: 'FHSS departments we service' }
+        ];
+
+        async function ensureGroupsCatalog(force = false) {
+            if (!force && groupsCatalog.length > 0) return groupsCatalog;
+            try {
+                const response = await fetch('/api/groups');
+                const data = await response.json();
+                if (response.ok && Array.isArray(data.groups) && data.groups.length > 0) {
+                    groupsCatalog = data.groups;
+                } else {
+                    groupsCatalog = FALLBACK_GROUPS.slice();
+                }
+            } catch (error) {
+                groupsCatalog = FALLBACK_GROUPS.slice();
+            }
+            return groupsCatalog;
+        }
+
+        function applyGroupsCatalog(nextGroups) {
+            if (Array.isArray(nextGroups) && nextGroups.length > 0) {
+                groupsCatalog = nextGroups;
+            }
+            if (staffFilterGroup !== 'all' && !groupsCatalog.some(group => group.id === staffFilterGroup)) {
+                staffFilterGroup = 'all';
+            }
+            hostSelectedGroups = hostSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
+            if (hostSelectedGroups.length === 0) hostSelectedGroups = ['clients'];
+            renderHostGroupPicker();
+            renderGroupManager();
+            renderStaffFilterTabs();
+            const editingId = document.getElementById('staff-id')?.value;
+            if (editingId) {
+                const person = staffPeople.find(p => p.id === editingId);
+                renderStaffGroupOptions(person?.groups?.length ? person.groups : defaultStaffFormGroups());
+            } else {
+                renderStaffGroupOptions(defaultStaffFormGroups());
+            }
+            renderStaffList();
+        }
+
+        function renderHostGroupPicker() {
+            const container = document.getElementById('host-group-options');
+            if (!container) return;
+            container.innerHTML = groupsCatalog.map(group => {
+                const checked = hostSelectedGroups.includes(group.id) ? 'checked' : '';
+                const count = getHostPoolSize([group.id]);
+                return `
+                    <label class="group-option">
+                        <input class="group-option-check" type="checkbox" value="${escapeHtml(group.id)}" ${checked}
+                            onchange="onHostGroupsChanged()">
+                        <span class="group-option-name">${escapeHtml(group.label)}</span>
+                        <span class="group-option-count">${count}</span>
+                    </label>
+                `;
+            }).join('');
+            updateHostGroupCount();
+        }
+
+        function updateHostGroupCount() {
+            const el = document.getElementById('host-group-count');
+            if (!el) return;
+            const size = getHostPoolSize();
+            const labels = groupsCatalog
+                .filter(group => hostSelectedGroups.includes(group.id))
+                .map(group => group.label);
+            if (labels.length === 0) {
+                el.innerText = 'Select at least one group.';
+                return;
+            }
+            el.innerText = `${size} ${size === 1 ? 'entry' : 'entries'} from ${labels.join(' + ')}`;
+        }
+
+        function onHostGroupsChanged() {
+            const checked = [...document.querySelectorAll('#host-group-options input[type="checkbox"]:checked')]
+                .map(input => input.value);
+            if (checked.length === 0) {
+                renderHostGroupPicker();
+                setGameSettingsMessage('Select at least one group.', true);
+                return;
+            }
+            hostSelectedGroups = checked;
+            setGameSettingsMessage('');
+            updateHostGroupCount();
+        }
+
+        function getSelectedHostGroups() {
+            const checked = [...document.querySelectorAll('#host-group-options input[type="checkbox"]:checked')]
+                .map(input => input.value);
+            return checked.length > 0 ? checked : hostSelectedGroups;
+        }
+
+        function renderStaffGroupOptions(selectedGroups = ['clients'], person = null) {
+            const container = document.getElementById('staff-group-options');
+            if (!container) return;
+            container.innerHTML = groupsCatalog.map(group => {
+                const checked = selectedGroups.includes(group.id) ? 'checked' : '';
+                return `
+                    <label class="group-option compact">
+                        <input class="group-option-check" type="checkbox" value="${escapeHtml(group.id)}" ${checked}
+                            onchange="onStaffGroupsChanged()">
+                        <span class="group-option-name">${escapeHtml(group.label)}</span>
+                    </label>
+                `;
+            }).join('');
+            renderStaffEntryFields(selectedGroups, person);
+        }
+
+        function onStaffGroupsChanged() {
+            const id = document.getElementById('staff-id').value;
+            const person = staffPeople.find(p => p.id === id) || null;
+            // Keep typed values; re-infer category from the new group set.
+            renderStaffEntryFields(getStaffFormGroups(), person, { preserveForm: true });
+        }
+
+        function getStaffFormGroups() {
+            const checked = [...document.querySelectorAll('#staff-group-options input[type="checkbox"]:checked')]
+                .map(input => input.value);
+            return checked.length > 0 ? checked : defaultStaffFormGroups();
+        }
+
+        function groupBadgesHtml(person) {
+            const groups = Array.isArray(person.groups) && person.groups.length ? person.groups : ['clients'];
+            return groups.map(id => {
+                const group = groupsCatalog.find(item => item.id === id);
+                return `<span class="group-badge">${escapeHtml(group ? group.label : id)}</span>`;
+            }).join('');
+        }
+
+        function setGroupMessage(message, isError = false) {
+            const el = document.getElementById('group-message');
+            if (!el) return;
+            el.innerText = message;
+            el.classList.toggle('error', isError);
+        }
+
+        function isManagerEditorOpen() {
+            const editor = document.getElementById('manager-editor');
+            return editor && !editor.classList.contains('hidden');
+        }
+
+        const DEFAULT_PLACE_FIELDS = [
+            { id: 'photo', label: 'Photo', type: 'photo', required: false, shown: true, guessed: false, filter_by_gender: false },
+            { id: 'name', label: 'Full Name', type: 'text', required: true, shown: false, guessed: true, filter_by_gender: false },
+            { id: 'abbreviation', label: 'Abbreviation', type: 'text', required: true, shown: false, guessed: true, filter_by_gender: false }
+        ];
+
+        const DEFAULT_PEOPLE_FIELDS = [
+            { id: 'photo', label: 'Photo', type: 'photo', required: false, shown: true, guessed: false, filter_by_gender: false },
+            { id: 'name', label: 'Name', type: 'text', required: true, shown: false, guessed: true, filter_by_gender: true },
+            { id: 'position', label: 'Position / Detail', type: 'text', required: true, shown: false, guessed: true, filter_by_gender: false },
+            { id: 'gender', label: 'Gender for Name Options', type: 'gender', required: true, shown: false, guessed: false, filter_by_gender: false }
+        ];
+
+        function cloneFields(fields) {
+            return (Array.isArray(fields) ? fields : []).map(field => ({ ...field }));
+        }
+
+        function defaultFieldsForGroup(group, category = null) {
+            if (category === 'person') return cloneFields(DEFAULT_PEOPLE_FIELDS);
+            if (category === 'other') return cloneFields(DEFAULT_PLACE_FIELDS);
+            if (!group) return cloneFields(DEFAULT_PLACE_FIELDS);
+            if (Array.isArray(group.fields) && group.fields.length) return cloneFields(group.fields);
+            if (group.id === 'clients' || group.id === 'internal-staff') return cloneFields(DEFAULT_PEOPLE_FIELDS);
+            return cloneFields(DEFAULT_PLACE_FIELDS);
+        }
+
+        function categoryFromFields(fields) {
+            if (!Array.isArray(fields) || !fields.length) return 'other';
+            if (fields.some(field => field.type === 'gender' || field.id === 'gender' || field.filter_by_gender)) {
+                return 'person';
+            }
+            if (fields.some(field => field.id === 'abbreviation')) return 'other';
+            if (fields.some(field => field.id === 'position')) return 'person';
+            return 'other';
+        }
+
+        function fieldsForCategory(category) {
+            return category === 'person'
+                ? cloneFields(DEFAULT_PEOPLE_FIELDS)
+                : cloneFields(DEFAULT_PLACE_FIELDS);
+        }
+
+        function mergeFieldsFromGroups(groupIds) {
+            const ids = Array.isArray(groupIds) && groupIds.length ? groupIds : ['clients'];
+            const merged = [];
+            const seen = new Set();
+            ids.forEach(id => {
+                const group = groupsCatalog.find(item => item.id === id);
+                defaultFieldsForGroup(group || { id }).forEach(field => {
+                    if (seen.has(field.id)) return;
+                    seen.add(field.id);
+                    merged.push({ ...field });
+                });
+            });
+            return merged;
+        }
+
+        function inferStaffEntryCategory(groupIds, person = null) {
+            const groups = person && Array.isArray(person.groups) && person.groups.length
+                ? person.groups
+                : groupIds;
+            return categoryFromFields(mergeFieldsFromGroups(groups));
+        }
+
+        function getStaffEntryCategory(fallbackGroups = defaultStaffFormGroups(), person = null) {
+            const selected = document.querySelector('input[name="staff-entry-category"]:checked');
+            if (selected && (selected.value === 'person' || selected.value === 'other')) {
+                return selected.value;
+            }
+            return inferStaffEntryCategory(fallbackGroups, person);
+        }
+
+        function onStaffEntryCategoryChanged() {
+            const id = document.getElementById('staff-id').value;
+            const person = staffPeople.find(p => p.id === id) || null;
+            renderStaffEntryFields(getStaffFormGroups(), person, { preserveForm: true, keepCategory: true });
+        }
+
+        function setGroupEntryCategory(category) {
+            const select = document.getElementById('group-entry-category');
+            if (!select) return;
+            select.value = category === 'person' ? 'person' : 'other';
+        }
+
+        function getPersonFieldValue(person, fieldId) {
+            if (!person) return '';
+            if (fieldId === 'name') return person.name || '';
+            if (fieldId === 'position') return person.position || '';
+            if (fieldId === 'gender') return person.gender || 'F';
+            if (fieldId === 'photo') return person.image || '';
+            if (person.values && person.values[fieldId] != null) return String(person.values[fieldId]);
+            if (fieldId === 'abbreviation') return person.position || '';
+            return '';
+        }
+
+        function renderStaffEntryFields(selectedGroups = defaultStaffFormGroups(), person = null, options = {}) {
+            const container = document.getElementById('staff-dynamic-fields');
+            if (!container) return;
+            const preserveForm = Boolean(options.preserveForm);
+            const category = options.keepCategory
+                ? getStaffEntryCategory(selectedGroups, person)
+                : (options.category || inferStaffEntryCategory(selectedGroups, person));
+            const fields = fieldsForCategory(category);
+
+            const existingValues = {};
+            fields.forEach(field => {
+                if (field.type === 'photo') return;
+                const input = document.getElementById(
+                    field.type === 'gender' ? 'staff-field-gender' : `staff-field-${field.id}`
+                );
+                if (input) existingValues[field.id] = input.value;
+            });
+            // Also preserve values from the other category when switching Person ↔ Other.
+            ['name', 'position', 'abbreviation', 'gender'].forEach(fieldId => {
+                if (Object.prototype.hasOwnProperty.call(existingValues, fieldId)) return;
+                const input = document.getElementById(
+                    fieldId === 'gender' ? 'staff-field-gender' : `staff-field-${fieldId}`
+                );
+                if (input) existingValues[fieldId] = input.value;
+            });
+
+            function fieldValue(fieldId, fallback = '') {
+                const fromPerson = person ? getPersonFieldValue(person, fieldId) : '';
+                const fromDom = Object.prototype.hasOwnProperty.call(existingValues, fieldId)
+                    ? existingValues[fieldId]
+                    : null;
+                // Prefer the person being edited so a prior form (e.g. WVB) cannot overwrite them.
+                if (person && !preserveForm) return fromPerson || fallback;
+                if (fromDom != null) return fromDom;
+                return fromPerson || fallback;
+            }
+
+            const fieldsHtml = fields.map(field => {
+                if (field.type === 'photo') {
+                    return `
+                        <label>
+                            ${escapeHtml(field.label)}
+                            <input type="file" id="staff-photo" accept="image/png,image/jpeg,image/gif,image/webp" />
+                        </label>
+                    `;
+                }
+                if (field.type === 'gender') {
+                    const value = fieldValue('gender', 'F') || 'F';
+                    return `
+                        <label>
+                            ${escapeHtml(field.label)}
+                            <select id="staff-field-gender">
+                                <option value="F" ${value === 'F' ? 'selected' : ''}>F</option>
+                                <option value="M" ${value === 'M' ? 'selected' : ''}>M</option>
+                            </select>
+                        </label>
+                    `;
+                }
+                const value = fieldValue(field.id);
+                const placeholder = field.id === 'abbreviation'
+                    ? 'e.g. JFSB'
+                    : field.id === 'name'
+                        ? (category === 'person' ? 'Name' : 'Full name')
+                        : field.id === 'position'
+                            ? 'Position or detail'
+                            : '';
+                return `
+                    <label>
+                        ${escapeHtml(field.label)}
+                        <input type="text" id="staff-field-${escapeHtml(field.id)}"
+                            ${field.required ? 'required' : ''}
+                            value="${escapeHtml(value)}"
+                            placeholder="${escapeHtml(placeholder)}" />
+                    </label>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <fieldset class="staff-entry-category">
+                    <legend>Entry type</legend>
+                    <label class="staff-entry-category-option">
+                        <input type="radio" name="staff-entry-category" value="person"
+                            ${category === 'person' ? 'checked' : ''}
+                            onchange="onStaffEntryCategoryChanged()" />
+                        <span>Person</span>
+                    </label>
+                    <label class="staff-entry-category-option">
+                        <input type="radio" name="staff-entry-category" value="other"
+                            ${category === 'other' ? 'checked' : ''}
+                            onchange="onStaffEntryCategoryChanged()" />
+                        <span>Other</span>
+                    </label>
+                </fieldset>
+                <div class="form-grid">${fieldsHtml}</div>
+            `;
+
+            const photoInput = document.getElementById('staff-photo');
+            if (photoInput) {
+                photoInput.addEventListener('change', onStaffPhotoSelected);
+            }
+        }
+
+        function collectStaffFormValues() {
+            const groups = getStaffFormGroups();
+            const category = getStaffEntryCategory(groups);
+            const fields = fieldsForCategory(category);
+            const values = {};
+            fields.forEach(field => {
+                if (field.type === 'photo') return;
+                const el = document.getElementById(
+                    field.type === 'gender' ? 'staff-field-gender' : `staff-field-${field.id}`
+                );
+                values[field.id] = el ? String(el.value || '').trim() : '';
+            });
+            return { groups, values, fields, category };
+        }
+
+        function setManagerEditorView(view = 'group') {
+            // group = group label/description
+            // entry = roster entry form
+            managerEditorView = view === 'entry' ? 'entry' : 'group';
+
+            const groupDetailsPanel = document.getElementById('group-details-panel');
+            const groupSubmit = document.getElementById('group-submit');
+            const staffForm = document.getElementById('staff-form');
+            const editGroupBtn = document.getElementById('edit-group-btn');
+            const addNewBtn = document.getElementById('add-new-btn');
+            const groupId = document.getElementById('group-edit-id').value;
+            const group = groupsCatalog.find(item => item.id === groupId);
+            const title = document.getElementById('manager-editor-title');
+            const subtitle = document.getElementById('manager-editor-subtitle');
+            const showingGroup = managerEditorView === 'group';
+
+            if (groupDetailsPanel) groupDetailsPanel.classList.toggle('hidden', !showingGroup);
+            if (groupSubmit) groupSubmit.classList.toggle('hidden', !showingGroup);
+            if (staffForm) staffForm.classList.toggle('hidden', showingGroup);
+            if (editGroupBtn) editGroupBtn.classList.toggle('active', showingGroup);
+            if (addNewBtn) addNewBtn.classList.toggle('active', !showingGroup);
+
+            if (showingGroup) {
+                title.innerText = group ? `Edit ${group.label}` : (groupId ? 'Edit Group' : 'Add Group');
+                subtitle.innerText = group
+                    ? 'Update this group’s label and description.'
+                    : 'Create a quiz pool for roster entries.';
+                document.getElementById('group-label').focus();
+                return;
+            }
+
+            const editingId = document.getElementById('staff-id').value;
+            title.innerText = editingId
+                ? (group ? `Edit ${group.label} Entry` : 'Edit Entry')
+                : (group ? `Add to ${group.label}` : 'New Entry');
+            subtitle.innerText = editingId
+                ? 'Update this entry’s fields, photo, and group tags.'
+                : group
+                    ? `Add an entry to the ${group.label} pool.`
+                    : 'Add an entry and choose which groups it belongs to.';
+            if (!editingId) {
+                resetStaffForm();
+            } else {
+                const person = staffPeople.find(p => p.id === editingId);
+                renderStaffEntryFields(
+                    person?.groups?.length ? person.groups : getStaffFormGroups(),
+                    person || null
+                );
+            }
+            const firstInput = document.querySelector('#staff-dynamic-fields input[type="text"], #staff-dynamic-fields select');
+            if (firstInput) firstInput.focus();
+        }
+
+        function updateManagerEditorChrome(mode = 'edit-group') {
+            const groupForm = document.getElementById('group-form');
+            const editGroupBtn = document.getElementById('edit-group-btn');
+            const addNewBtn = document.getElementById('add-new-btn');
+            groupForm.classList.remove('hidden');
+
+            if (mode === 'new-group') {
+                document.getElementById('group-submit').innerText = 'Add Group';
+                editGroupBtn.classList.add('hidden');
+                addNewBtn.classList.add('hidden');
+                setManagerEditorView('group');
+                return;
+            }
+
+            if (mode === 'entry-only') {
+                document.getElementById('group-submit').innerText = 'Save Group';
+                editGroupBtn.classList.add('hidden');
+                addNewBtn.classList.remove('hidden');
+                setManagerEditorView('entry');
+                return;
+            }
+
+            document.getElementById('group-submit').innerText = 'Save Group';
+            editGroupBtn.classList.remove('hidden');
+            addNewBtn.classList.remove('hidden');
+            setManagerEditorView(managerEditorView === 'entry' ? 'entry' : 'group');
+        }
+
+        function openManagerEditor(mode = 'edit-group') {
+            const editor = document.getElementById('manager-editor');
+            editor.classList.remove('hidden');
+            if (mode === 'entry-only' || mode === 'entry') {
+                managerEditorView = 'entry';
+            } else {
+                managerEditorView = 'group';
+            }
+            if (mode === 'entry-only') {
+                updateManagerEditorChrome('entry-only');
+            } else if (mode === 'entry') {
+                updateManagerEditorChrome('edit-group');
+            } else {
+                updateManagerEditorChrome(mode);
+            }
+            editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeManagerEditor() {
+            document.getElementById('manager-editor').classList.add('hidden');
+            document.getElementById('group-form').reset();
+            document.getElementById('group-edit-id').value = '';
+            document.getElementById('group-submit').innerText = 'Save Group';
+            document.getElementById('group-form').classList.remove('hidden');
+            resetStaffForm();
+            setGroupMessage('');
+            setStaffMessage('');
+            renderGroupManager();
+        }
+
+        function openAddGroupEditor() {
+            document.getElementById('group-form').reset();
+            document.getElementById('group-edit-id').value = '';
+            setGroupEntryCategory('person');
+            resetStaffForm();
+            setGroupMessage('');
+            openManagerEditor('new-group');
+            renderGroupManager();
+            document.getElementById('group-label').focus();
+        }
+
+        function openNewEntryEditor() {
+            const activeGroupId = document.getElementById('group-edit-id').value || (staffFilterGroup !== 'all' ? staffFilterGroup : '');
+            const group = groupsCatalog.find(item => item.id === activeGroupId);
+            resetStaffForm();
+            if (group) {
+                document.getElementById('group-edit-id').value = group.id;
+                document.getElementById('group-label').value = group.label || '';
+                document.getElementById('group-description').value = group.description || '';
+                setGroupEntryCategory(categoryFromFields(defaultFieldsForGroup(group)));
+                setStaffFilter(group.id);
+                openManagerEditor('edit-group');
+            } else {
+                document.getElementById('group-form').reset();
+                document.getElementById('group-edit-id').value = '';
+                setGroupEntryCategory('person');
+                openManagerEditor('entry-only');
+            }
+            renderGroupManager();
+            const firstStaffInput = document.querySelector('#staff-dynamic-fields input[type="text"], #staff-dynamic-fields select');
+            if (firstStaffInput) firstStaffInput.focus();
+        }
+
+        function resetGroupForm(hideEditor = false) {
+            document.getElementById('group-form').reset();
+            document.getElementById('group-edit-id').value = '';
+            document.getElementById('group-submit').innerText = 'Save Group';
+            setGroupMessage('');
+            if (hideEditor) closeManagerEditor();
+        }
+
+        function renderGroupManager() {
+            const list = document.getElementById('group-manager-list');
+            if (!list) return;
+            const activeId = document.getElementById('group-edit-id')?.value || '';
+            list.innerHTML = groupsCatalog.map(group => {
+                const count = staffPeople.filter(person => personInGroups(person, [group.id])).length;
+                const isDefault = group.id === 'clients';
+                const isActive = activeId === group.id && isManagerEditorOpen();
+                return `
+                    <div class="group-manager-row${isActive ? ' active' : ''}">
+                        <div>
+                            <strong>${escapeHtml(group.label)}</strong>
+                            <span>${escapeHtml(group.description || 'No description')}</span>
+                            <em>${count} ${count === 1 ? 'entry' : 'entries'}</em>
+                        </div>
+                        <div class="staff-actions">
+                            <button type="button" class="small-btn" onclick="editGroup('${escapeHtml(group.id)}')">Edit</button>
+                            <button type="button" class="small-btn danger-btn" onclick="deleteGroup('${escapeHtml(group.id)}')" ${isDefault ? 'disabled title="Default group"' : ''}>Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function editGroup(id) {
+            const group = groupsCatalog.find(item => item.id === id);
+            if (!group) return;
+            resetStaffForm();
+            document.getElementById('group-edit-id').value = group.id;
+            document.getElementById('group-label').value = group.label || '';
+            document.getElementById('group-description').value = group.description || '';
+            setGroupEntryCategory(categoryFromFields(defaultFieldsForGroup(group)));
+            setGroupMessage('Editing ' + group.label);
+            setStaffFilter(group.id);
+            managerEditorView = 'group';
+            openManagerEditor('edit-group');
+            renderGroupManager();
+            document.getElementById('group-label').focus();
+        }
+
+        async function deleteGroup(id) {
+            const group = groupsCatalog.find(item => item.id === id);
+            if (!group || !confirm('Delete group "' + group.label + '"?')) return;
+            if (!managerPassword) {
+                openManagerEditor('edit-group');
+                setGroupMessage('Manager login is required.', true);
+                return;
+            }
+            const response = await fetch('/api/groups/' + encodeURIComponent(id), {
+                method: 'DELETE',
+                headers: managerHeaders()
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                openManagerEditor(document.getElementById('group-edit-id').value ? 'edit-group' : 'new-group');
+                setGroupMessage(result.error || 'Unable to delete group.', true);
+                return;
+            }
+            if (document.getElementById('group-edit-id').value === id) {
+                closeManagerEditor();
+            }
+            applyGroupsCatalog(result.groups);
+            setGroupMessage(group.label + ' was deleted.');
+        }
+
+        function renderStaffFilterTabs() {
+            const tabs = document.getElementById('staff-filter-tabs');
+            if (!tabs) return;
+            const items = [
+                { id: 'all', label: 'All', count: staffPeople.length },
+                ...groupsCatalog.map(group => ({
+                    id: group.id,
+                    label: group.label,
+                    count: staffPeople.filter(person => personInGroups(person, [group.id])).length
+                }))
+            ];
+            tabs.innerHTML = items.map(item => `
+                <button type="button"
+                    class="staff-filter-tab${staffFilterGroup === item.id ? ' active' : ''}"
+                    onclick="setStaffFilter('${escapeHtml(item.id)}')"
+                    aria-pressed="${staffFilterGroup === item.id ? 'true' : 'false'}">
+                    ${escapeHtml(item.label)}
+                    <span>${item.count}</span>
+                </button>
+            `).join('');
+            updateStaffFilterCount();
+        }
+
+        function updateStaffFilterCount() {
+            const el = document.getElementById('staff-filter-count');
+            if (!el) return;
+            const filtered = getFilteredStaff();
+            if (staffFilterGroup === 'all') {
+                el.innerText = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'} in roster`;
+                return;
+            }
+            const group = groupsCatalog.find(item => item.id === staffFilterGroup);
+            el.innerText = `${filtered.length} in ${group ? group.label : staffFilterGroup}`;
+        }
+
+        function setStaffFilter(groupId) {
+            staffFilterGroup = groupId || 'all';
+            renderStaffFilterTabs();
+            renderStaffList();
+            const editingId = document.getElementById('staff-id').value;
+            if (!editingId) {
+                renderStaffGroupOptions(defaultStaffFormGroups());
+            }
+        }
 
         function clearPodiumRevealTimeouts() {
             podiumRevealTimeouts.forEach(id => clearTimeout(id));
@@ -572,7 +1263,7 @@
             return modal && !modal.classList.contains('hidden');
         }
 
-        function openGameSettingsModal(options = {}) {
+        async function openGameSettingsModal(options = {}) {
             const initial = options.initial === true;
             settingsModalInitial = initial;
             const modal = document.getElementById('game-settings-modal');
@@ -582,13 +1273,25 @@
             const cancelBtn = document.getElementById('modal-cancel-settings');
             setGameSettingsMessage('');
             hint.innerText = initial
-                ? 'Set the time limit and number of rounds, then open the lobby for players to join.'
-                : 'Update settings between rounds. Changes apply to the next round.';
+                ? 'Choose groups, time limit, and questions, then open the lobby.'
+                : 'Changes apply to the next question.';
 
             openLobbyBtn.classList.toggle('hidden', !initial);
             saveBtn.classList.toggle('hidden', initial);
             cancelBtn.classList.toggle('hidden', initial);
 
+            await ensureGroupsCatalog(true);
+            if (!staffPeople.length) {
+                try {
+                    const response = await fetch('/api/people');
+                    staffPeople = await response.json();
+                } catch (error) {
+                    staffPeople = [];
+                }
+            }
+            hostSelectedGroups = hostSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
+            if (hostSelectedGroups.length === 0) hostSelectedGroups = [groupsCatalog[0]?.id || 'clients'];
+            renderHostGroupPicker();
             modal.classList.remove('hidden');
         }
 
@@ -622,17 +1325,32 @@
         async function updateGameSettings() {
             if (!hostCode || !hostToken) return false;
             const selected = getSelectedMaxRounds();
+            const groups = getSelectedHostGroups();
+            if (groups.length === 0) {
+                setGameSettingsMessage('Select at least one group.', true);
+                return false;
+            }
+            if (getHostPoolSize(groups) === 0) {
+                setGameSettingsMessage('No roster entries in the selected groups yet.', true);
+                return false;
+            }
+            hostSelectedGroups = groups;
             pendingMaxRounds = selected;
             const response = await fetch('/api/host/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: hostPayload({ max_rounds: selected })
+                body: hostPayload({ max_rounds: selected, groups })
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
                 pendingMaxRounds = null;
+                setGameSettingsMessage(result.error || 'Could not save settings.', true);
+                return false;
             }
-            return response.ok;
+            if (Array.isArray(result.selected_groups)) {
+                hostSelectedGroups = result.selected_groups;
+            }
+            return true;
         }
 
         async function openLobbyFromModal() {
@@ -666,6 +1384,9 @@
             if (!response.ok) throw new Error(result.error || 'Unable to create host session.');
             hostCode = result.game.code;
             hostToken = result.host_token;
+            if (Array.isArray(result.game.selected_groups) && result.game.selected_groups.length) {
+                hostSelectedGroups = result.game.selected_groups;
+            }
             sessionStorage.setItem('fhssHostCode', hostCode);
             sessionStorage.setItem('fhssHostToken', hostToken);
             updateJoinDisplay();
@@ -723,7 +1444,8 @@
                 headers: {'Content-Type': 'application/json'},
                 body: hostPayload({
                     time_limit: limit,
-                    max_rounds: getSelectedMaxRounds()
+                    max_rounds: getSelectedMaxRounds(),
+                    groups: hostSelectedGroups
                 }) 
             });
         }
@@ -775,26 +1497,38 @@
         }
 
         async function loadStaff() {
+            await ensureGroupsCatalog(true);
             const response = await fetch('/api/people');
             staffPeople = await response.json();
             updateStaffCountDisplay(staffPeople.length);
+            renderGroupManager();
+            renderStaffFilterTabs();
+            renderStaffGroupOptions(defaultStaffFormGroups());
             renderStaffList();
+            renderHostGroupPicker();
         }
 
         function renderStaffList() {
             const list = document.getElementById('staff-list');
+            const filtered = getFilteredStaff();
+            updateStaffFilterCount();
             if (staffPeople.length === 0) {
-                list.innerHTML = '<p class="empty-state">No staff are in the game roster yet.</p>';
+                list.innerHTML = '<p class="empty-state">No roster entries yet. Add people above and tag them into groups.</p>';
+                return;
+            }
+            if (filtered.length === 0) {
+                list.innerHTML = '<p class="empty-state">No entries in this group yet. Add one above or choose another filter.</p>';
                 return;
             }
 
-            list.innerHTML = staffPeople.map(person => `
+            list.innerHTML = filtered.map(person => `
                 <div class="staff-row">
                     <div class="staff-identity">
                         ${person.image ? `<img src="${staffPhotoUrl(person)}" alt="">` : '<div class="staff-photo-placeholder"></div>'}
                         <div>
                             <strong>${escapeHtml(person.name)}</strong>
                             <span>${escapeHtml(person.position)}</span>
+                            <div class="group-badge-row">${groupBadgesHtml(person)}</div>
                         </div>
                     </div>
                     <div class="staff-actions">
@@ -806,31 +1540,43 @@
         }
 
         function resetStaffForm() {
-            document.getElementById('staff-form').reset();
             document.getElementById('staff-id').value = '';
-            document.getElementById('staff-submit').innerText = 'Add Staff';
+            document.getElementById('staff-submit').innerText = 'Add Entry';
             currentPhotoData = null;
             document.getElementById('staff-preview-wrapper').classList.add('hidden');
             document.getElementById('staff-preview').src = '';
+            renderStaffGroupOptions(defaultStaffFormGroups());
             setStaffMessage('');
         }
 
         function editStaff(id) {
             const person = staffPeople.find(p => p.id === id);
             if (!person) return;
+            const personGroups = Array.isArray(person.groups) && person.groups.length ? person.groups : ['clients'];
+            const primaryGroupId = personGroups.includes(staffFilterGroup) ? staffFilterGroup : personGroups[0];
+            const group = groupsCatalog.find(item => item.id === primaryGroupId);
+            // Set editing id first so filter/group re-renders do not wipe or reuse another entry's form.
             document.getElementById('staff-id').value = person.id;
-            document.getElementById('staff-name').value = person.name || '';
-            document.getElementById('staff-position').value = person.position || '';
-            document.getElementById('staff-gender').value = person.gender || 'F';
-            document.getElementById('staff-submit').innerText = 'Save Staff';
+            document.getElementById('staff-submit').innerText = 'Save Entry';
             currentPhotoData = null;
+            if (group) {
+                document.getElementById('group-edit-id').value = group.id;
+                document.getElementById('group-label').value = group.label || '';
+                document.getElementById('group-description').value = group.description || '';
+                setGroupEntryCategory(categoryFromFields(defaultFieldsForGroup(group)));
+                setStaffFilter(group.id);
+            }
+            renderStaffGroupOptions(personGroups, person);
             if (person.image) {
                 document.getElementById('staff-preview').src = staffPhotoUrl(person);
                 document.getElementById('staff-preview-wrapper').classList.remove('hidden');
             } else {
                 document.getElementById('staff-preview-wrapper').classList.add('hidden');
             }
-            document.getElementById('staff-name').focus();
+            openManagerEditor(group ? 'entry' : 'entry-only');
+            renderGroupManager();
+            const firstInput = document.querySelector('#staff-dynamic-fields input[type="text"], #staff-dynamic-fields select');
+            if (firstInput) firstInput.focus();
             setStaffMessage('Editing ' + person.name);
         }
 
@@ -853,7 +1599,8 @@
 
         function clearStaffPhoto() {
             currentPhotoData = null;
-            document.getElementById('staff-photo').value = '';
+            const photoInput = document.getElementById('staff-photo');
+            if (photoInput) photoInput.value = '';
             const id = document.getElementById('staff-id').value;
             const person = staffPeople.find(p => p.id === id);
             if (person && person.image) {
@@ -864,7 +1611,7 @@
             }
         }
 
-        document.getElementById('staff-photo').addEventListener('change', event => {
+        function onStaffPhotoSelected(event) {
             const file = event.target.files[0];
             if (!file) {
                 clearStaffPhoto();
@@ -880,7 +1627,7 @@
                 document.getElementById('staff-preview-wrapper').classList.remove('hidden');
             };
             reader.readAsDataURL(file);
-        });
+        }
 
         document.getElementById('staff-form').addEventListener('submit', async event => {
             event.preventDefault();
@@ -890,10 +1637,13 @@
             }
             const id = document.getElementById('staff-id').value;
             const existing = staffPeople.find(p => p.id === id);
+            const { groups, values } = collectStaffFormValues();
             const payload = {
-                name: document.getElementById('staff-name').value.trim(),
-                position: document.getElementById('staff-position').value.trim(),
-                gender: document.getElementById('staff-gender').value,
+                name: values.name || '',
+                position: values.position || values.abbreviation || '',
+                gender: values.gender || 'F',
+                groups,
+                values,
                 image: existing ? existing.image : '',
                 photo: currentPhotoData
             };
@@ -909,9 +1659,57 @@
                 return;
             }
 
-            setStaffMessage(payload.name + ' was saved.');
+            setStaffMessage((payload.name || 'Entry') + ' was saved.');
             resetStaffForm();
             await loadStaff();
+            if (isManagerEditorOpen()) {
+                const groupId = document.getElementById('group-edit-id').value;
+                const group = groupsCatalog.find(item => item.id === groupId);
+                managerEditorView = 'entry';
+                openManagerEditor(group ? 'entry' : 'entry-only');
+                renderGroupManager();
+            }
+        });
+
+        document.getElementById('group-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!managerPassword) {
+                setGroupMessage('Manager login is required.', true);
+                return;
+            }
+            const id = document.getElementById('group-edit-id').value;
+            const existing = groupsCatalog.find(item => item.id === id);
+            const category = document.getElementById('group-entry-category')?.value === 'person'
+                ? 'person'
+                : 'other';
+            const payload = {
+                label: document.getElementById('group-label').value.trim(),
+                description: document.getElementById('group-description').value.trim(),
+                fields: defaultFieldsForGroup(existing, category)
+            };
+            const response = await fetch(id ? '/api/groups/' + encodeURIComponent(id) : '/api/groups', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', ...managerHeaders() },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                setGroupMessage(result.error || 'Unable to save group.', true);
+                return;
+            }
+            setGroupMessage((result.group?.label || payload.label) + ' was saved.');
+            applyGroupsCatalog(result.groups);
+            if (result.group) {
+                document.getElementById('group-edit-id').value = result.group.id;
+                document.getElementById('group-label').value = result.group.label || '';
+                document.getElementById('group-description').value = result.group.description || '';
+                setGroupEntryCategory(categoryFromFields(result.group.fields || defaultFieldsForGroup(result.group)));
+                setStaffFilter(result.group.id);
+                managerEditorView = 'group';
+                openManagerEditor('edit-group');
+                renderGroupManager();
+                renderStaffGroupOptions(defaultStaffFormGroups());
+            }
         });
 
         document.getElementById('manager-login-form').addEventListener('submit', async event => {
@@ -939,12 +1737,16 @@
                 })
                 .then(state => {
                     syncMaxRoundsSelect(state.max_rounds || 15);
+                    if (Array.isArray(state.selected_groups) && state.selected_groups.length) {
+                        hostSelectedGroups = state.selected_groups;
+                    }
                     setEditGameEnabled(state.status !== 'question');
                     updateHostControlButtons(state);
                     currentRound = state.round || 0;
+                    const questionCount = state.max_rounds || getSelectedMaxRounds();
 
                     if (state.status === 'lobby') {
-                        document.getElementById('round-title').innerText = `Lobby · ${state.max_rounds || getSelectedMaxRounds()} rounds`;
+                        document.getElementById('round-title').innerText = `Lobby · ${questionCount} questions`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
@@ -954,7 +1756,7 @@
                         if (currentHostState !== 'question') {
                             revealRequestedForRound = false;
                         }
-                        document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()}`;
+                        document.getElementById('round-title').innerText = `Question ${state.round} of ${questionCount}`;
                         
                         let elapsed = (Date.now() / 1000) - state.start_time;
                         let remaining = Math.max(0, state.time_limit - elapsed);
@@ -984,7 +1786,7 @@
                         document.getElementById('target-info').classList.add('hidden');
                     } else if (state.status === 'reveal') {
                         updateLobbyStartPrompt({ status: state.status, round: state.round });
-                        document.getElementById('round-title').innerText = `Round ${state.round} of ${state.max_rounds || getSelectedMaxRounds()} · Results`;
+                        document.getElementById('round-title').innerText = `Question ${state.round} of ${questionCount} · Results`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         if (state.current_person) {
                             const photoUrl = state.current_person.image ? '/' + state.current_person.image : '';
@@ -992,7 +1794,11 @@
                             document.getElementById('target-photo-container').classList.remove('hidden');
                             document.getElementById('target-info').classList.remove('hidden');
                             document.getElementById('target-name').innerText = state.current_person.name;
-                            document.getElementById('target-pos').innerText = state.current_person.position;
+                            const secondary = (state.current_person.values && (
+                                state.current_person.values.abbreviation
+                                || state.current_person.values.position
+                            )) || state.current_person.position;
+                            document.getElementById('target-pos').innerText = secondary || '';
                         }
                         if (currentHostState !== 'reveal') {
                             if (!isFinalRoundPodium(state)) {
@@ -1001,7 +1807,7 @@
                         }
                     } else if (state.status === 'end') {
                         updateLobbyStartPrompt({ status: state.status, round: state.round });
-                        document.getElementById('round-title').innerText = `Final Results · ${state.max_rounds || getSelectedMaxRounds()} rounds`;
+                        document.getElementById('round-title').innerText = `Final Results · ${questionCount} questions`;
                         document.getElementById('host-timer-wrapper').classList.add('hidden');
                         document.getElementById('target-photo-container').classList.add('hidden');
                         document.getElementById('target-info').classList.add('hidden');
@@ -1061,6 +1867,14 @@
                     document.getElementById('round-title').innerText = error.message;
                 });
         }, 1000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            ensureGroupsCatalog(true).then(() => {
+                applyGroupsCatalog(groupsCatalog);
+                if (isSettingsModalOpen()) renderHostGroupPicker();
+            }).catch(() => {});
+        });
 
         initHostSession()
             .then(() => loadRosterCount())

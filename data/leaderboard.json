@@ -1,0 +1,113 @@
+[
+  
+  {
+    "team_name": "Jason (Identity theft is not a joke, Tyler! Millions of families suffer every year)",
+    "score": 23214,
+    "rounds": 15,
+    "recorded_at": "2026-07-15T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Jason Harvey",
+    "score": 21675,
+    "rounds": 15,
+    "recorded_at": "2026-07-01T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Bruce",
+    "score": 21562,
+    "rounds": 15,
+    "recorded_at": "2026-07-01T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Jason Harvey",
+    "score": 20937,
+    "rounds": 15,
+    "recorded_at": "2026-07-15T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Bruce",
+    "score": 19513,
+    "rounds": 15,
+    "recorded_at": "2026-07-15T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Jacob",
+    "score": 15365,
+    "rounds": 15,
+    "recorded_at": "2026-07-01T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Jacob",
+    "score": 15355,
+    "rounds": 15,
+    "recorded_at": "2026-07-01T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Bruce",
+    "score": 14354,
+    "rounds": 15,
+    "recorded_at": "2026-07-01T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Jacob",
+    "score": 13252,
+    "rounds": 15,
+    "recorded_at": "2026-07-14T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  },
+  {
+    "team_name": "Conner",
+    "score": 11965,
+    "rounds": 15,
+    "recorded_at": "2026-07-15T12:00:00.000Z",
+    "groups": [
+      "clients"
+    ],
+    "groups_key": "clients",
+    "questions": 15
+  }
+]

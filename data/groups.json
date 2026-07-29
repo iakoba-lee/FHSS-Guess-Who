@@ -1,0 +1,156 @@
+[
+    {
+        "id": "clients",
+        "label": "Clients",
+        "description": "Important FHSS staff and faculty clients",
+        "fields": [
+            {
+                "id": "photo",
+                "label": "Photo",
+                "type": "photo",
+                "required": false,
+                "shown": true,
+                "guessed": false,
+                "filter_by_gender": false
+            },
+            {
+                "id": "name",
+                "label": "Name",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": true
+            },
+            {
+                "id": "position",
+                "label": "Position / Detail",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "gender",
+                "label": "Gender for Name Options",
+                "type": "gender",
+                "required": true,
+                "shown": false,
+                "guessed": false,
+                "filter_by_gender": false
+            }
+        ]
+    },
+    {
+        "id": "internal-staff",
+        "label": "Internal Staff",
+        "description": "People within FHSS Computing Services",
+        "fields": [
+            {
+                "id": "photo",
+                "label": "Photo",
+                "type": "photo",
+                "required": false,
+                "shown": true,
+                "guessed": false,
+                "filter_by_gender": false
+            },
+            {
+                "id": "name",
+                "label": "Name",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": true
+            },
+            {
+                "id": "position",
+                "label": "Position / Detail",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "gender",
+                "label": "Gender for Name Options",
+                "type": "gender",
+                "required": true,
+                "shown": false,
+                "guessed": false,
+                "filter_by_gender": false
+            }
+        ]
+    },
+    {
+        "id": "locations",
+        "label": "Locations",
+        "description": "FHSS buildings and locations",
+        "fields": [
+            {
+                "id": "photo",
+                "label": "Photo",
+                "type": "photo",
+                "required": false,
+                "shown": true,
+                "guessed": false,
+                "filter_by_gender": false
+            },
+            {
+                "id": "name",
+                "label": "Full Name",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "abbreviation",
+                "label": "Abbreviation",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            }
+        ]
+    },
+    {
+        "id": "departments",
+        "label": "Departments",
+        "description": "FHSS departments we service",
+        "fields": [
+            {
+                "id": "photo",
+                "label": "Photo",
+                "type": "photo",
+                "required": false,
+                "shown": true,
+                "guessed": false,
+                "filter_by_gender": false
+            },
+            {
+                "id": "name",
+                "label": "Full Name",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "abbreviation",
+                "label": "Abbreviation",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            }
+        ]
+    }
+]

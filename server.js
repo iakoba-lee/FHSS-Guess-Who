@@ -9,18 +9,138 @@ const ROOT = __dirname;
 const PORT = Number.parseInt(process.env.PORT, 10) || 8080;
 const MANAGER_PASSWORD = process.env.MANAGER_PASSWORD || process.env.MANAGER_KEY;
 // When DATA_DIR is set (production Docker), live data lives on a persistent volume.
-// Without it, data stays in the repo root for local development.
+// Without it, data stays in the repo data/ folder for local development.
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
-const PEOPLE_FILE = DATA_DIR
-  ? path.join(DATA_DIR, 'people.json')
-  : path.join(ROOT, 'people.json');
-const LEADERBOARD_FILE = DATA_DIR
-  ? path.join(DATA_DIR, 'leaderboard.json')
-  : path.join(ROOT, 'leaderboard.json');
+const REPO_DATA_DIR = path.join(ROOT, 'data');
+const SEED_DATA_DIR = fs.existsSync(path.join(ROOT, 'seed-data'))
+  ? path.join(ROOT, 'seed-data')
+  : REPO_DATA_DIR;
+const DATA_ROOT = DATA_DIR || REPO_DATA_DIR;
+const LEGACY_PEOPLE_FILE = path.join(DATA_ROOT, 'people.json');
+const GROUPS_FILE = path.join(DATA_ROOT, 'groups.json');
+const LEADERBOARD_FILE = path.join(DATA_ROOT, 'leaderboard.json');
 const UPLOAD_DIR = DATA_DIR
   ? path.join(DATA_DIR, 'uploads')
   : path.join(ROOT, 'public', 'uploads');
 const LEADERBOARD_SIZE = 10;
+
+function peopleFileFor(groupId) {
+  return path.join(DATA_ROOT, `${groupId}.json`);
+}
+
+function seedPathFor(filename) {
+  return path.join(SEED_DATA_DIR, filename);
+}
+
+/** Default quiz pools seeded when groups.json is missing. */
+const PEOPLE_FIELDS = [
+  {
+    id: 'photo',
+    label: 'Photo',
+    type: 'photo',
+    required: false,
+    shown: true,
+    guessed: false,
+    filter_by_gender: false
+  },
+  {
+    id: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: true
+  },
+  {
+    id: 'position',
+    label: 'Position / Detail',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: false
+  },
+  {
+    id: 'gender',
+    label: 'Gender for Name Options',
+    type: 'gender',
+    required: true,
+    shown: false,
+    guessed: false,
+    filter_by_gender: false
+  }
+];
+
+const PLACE_FIELDS = [
+  {
+    id: 'photo',
+    label: 'Photo',
+    type: 'photo',
+    required: false,
+    shown: true,
+    guessed: false,
+    filter_by_gender: false
+  },
+  {
+    id: 'name',
+    label: 'Full Name',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: false
+  },
+  {
+    id: 'abbreviation',
+    label: 'Abbreviation',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: false
+  }
+];
+
+function defaultFieldsForGroupId(groupId) {
+  if (groupId === 'clients' || groupId === 'internal-staff') {
+    return PEOPLE_FIELDS.map((field) => ({ ...field }));
+  }
+  return PLACE_FIELDS.map((field) => ({ ...field }));
+}
+
+const DEFAULT_GROUPS = [
+  {
+    id: 'clients',
+    label: 'Clients',
+    description: 'Important FHSS staff and faculty clients',
+    fields: defaultFieldsForGroupId('clients')
+  },
+  {
+    id: 'internal-staff',
+    label: 'Internal Staff',
+    description: 'People within FHSS Computing Services',
+    fields: defaultFieldsForGroupId('internal-staff')
+  },
+  {
+    id: 'locations',
+    label: 'Locations',
+    description: 'FHSS buildings and locations',
+    fields: defaultFieldsForGroupId('locations')
+  },
+  {
+    id: 'departments',
+    label: 'Departments',
+    description: 'FHSS departments we service',
+    fields: defaultFieldsForGroupId('departments')
+  }
+];
+const DEFAULT_GROUP = 'clients';
+let groups = DEFAULT_GROUPS.map((group) => ({
+  ...group,
+  fields: (group.fields || []).map((field) => ({ ...field }))
+}));
+let groupIds = new Set(groups.map((group) => group.id));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -67,10 +187,13 @@ function createGameState(code = makeGameCode()) {
     status: 'lobby',
     round: 0,
     max_rounds: 15,
+    selected_groups: [DEFAULT_GROUP],
     current_person: null,
     used_person_ids: [],
     options_name: [],
     options_pos: [],
+    options: {},
+    guess_fields: [],
     teams: {},
     host_id: `host_${randomInt(1000, 9999)}`,
     host_token: randomToken(40),
@@ -80,6 +203,192 @@ function createGameState(code = makeGameCode()) {
     created_at: Date.now(),
     updated_at: Date.now()
   };
+}
+
+function rebuildGroupIds() {
+  groupIds = new Set(groups.map((group) => group.id));
+}
+
+function normalizeGroups(input) {
+  const values = Array.isArray(input)
+    ? input
+    : typeof input === 'string' && input.trim()
+      ? input.split(',')
+      : [];
+  const normalized = [...new Set(
+    values
+      .map((value) => String(value || '').trim())
+      .filter((id) => groupIds.has(id))
+  )];
+  return normalized.length > 0 ? normalized : [DEFAULT_GROUP];
+}
+
+function slugifyGroupId(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48);
+}
+
+function sanitizeField(input = {}, index = 0) {
+  let type = String(input.type || 'text').trim().toLowerCase();
+  if (!['text', 'photo', 'gender'].includes(type)) type = 'text';
+
+  let id = slugifyGroupId(input.id || input.label || `field-${index + 1}`);
+  if (!id) id = `field-${index + 1}`;
+  if (type === 'photo') id = 'photo';
+  if (type === 'gender') id = 'gender';
+
+  const label = String(input.label || id).trim() || id;
+  const guessed = type === 'text' ? Boolean(input.guessed) : false;
+  const shown = type === 'photo' ? (input.shown !== false) : Boolean(input.shown);
+
+  return {
+    id,
+    label,
+    type,
+    required: type === 'photo' ? false : Boolean(input.required),
+    shown,
+    guessed,
+    filter_by_gender: type === 'text' ? Boolean(input.filter_by_gender) : false
+  };
+}
+
+function sanitizeGroupFields(fields, groupId) {
+  const source = Array.isArray(fields) && fields.length > 0
+    ? fields
+    : defaultFieldsForGroupId(groupId);
+  const normalized = [];
+  const seen = new Set();
+
+  source.forEach((entry, index) => {
+    try {
+      const field = sanitizeField(entry, index);
+      if (seen.has(field.id)) return;
+      seen.add(field.id);
+      normalized.push(field);
+    } catch (error) {
+      // Skip invalid field definitions.
+    }
+  });
+
+  if (!seen.has('name')) {
+    normalized.unshift({
+      id: 'name',
+      label: 'Name',
+      type: 'text',
+      required: true,
+      shown: false,
+      guessed: true,
+      filter_by_gender: false
+    });
+  }
+
+  if (!normalized.some((field) => field.type === 'photo')) {
+    normalized.unshift({
+      id: 'photo',
+      label: 'Photo',
+      type: 'photo',
+      required: false,
+      shown: true,
+      guessed: false,
+      filter_by_gender: false
+    });
+  }
+
+  if (!normalized.some((field) => field.guessed && field.type === 'text')) {
+    const firstText = normalized.find((field) => field.type === 'text');
+    if (firstText) firstText.guessed = true;
+  }
+
+  return normalized;
+}
+
+function sanitizeGroup(input, { requireId = false } = {}) {
+  const label = String(input.label || '').trim();
+  const description = String(input.description || '').trim();
+  if (!label) {
+    throw new Error('Group label is required.');
+  }
+
+  let id = String(input.id || '').trim().toLowerCase();
+  if (!id) id = slugifyGroupId(label);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+    throw new Error('Group id must be lowercase letters, numbers, and hyphens.');
+  }
+  if (requireId && !input.id) {
+    throw new Error('Group id is required.');
+  }
+
+  return {
+    id,
+    label,
+    description,
+    fields: sanitizeGroupFields(input.fields, id)
+  };
+}
+
+function getGroupById(groupId) {
+  return groups.find((group) => group.id === groupId) || null;
+}
+
+function mergeFieldsForGroups(groupIdsInput) {
+  const ids = normalizeGroups(groupIdsInput);
+  const merged = [];
+  const seen = new Set();
+  ids.forEach((id) => {
+    const group = getGroupById(id);
+    const fields = group?.fields || defaultFieldsForGroupId(id);
+    fields.forEach((field) => {
+      if (seen.has(field.id)) return;
+      seen.add(field.id);
+      merged.push({ ...field });
+    });
+  });
+  return merged.length > 0 ? merged : defaultFieldsForGroupId(DEFAULT_GROUP);
+}
+
+function getGuessFields(groupIdsInput) {
+  return mergeFieldsForGroups(groupIdsInput).filter(
+    (field) => field.type === 'text' && field.guessed
+  );
+}
+
+function getPersonFieldValue(person, fieldId) {
+  if (!person) return '';
+  if (fieldId === 'name') return String(person.name || '');
+  if (fieldId === 'position') return String(person.position || '');
+  if (fieldId === 'gender') return String(person.gender || 'F');
+  if (fieldId === 'photo') return String(person.image || '');
+  const fromValues = person.values && person.values[fieldId] != null
+    ? String(person.values[fieldId])
+    : '';
+  if (fromValues) return fromValues;
+  // Migration: older place/department entries stored abbreviation in position.
+  if (fieldId === 'abbreviation') return String(person.position || '');
+  return '';
+}
+
+function groupsWithCounts() {
+  return groups.map((group) => ({
+    ...group,
+    count: people.filter((person) => personInGroups(person, [group.id])).length
+  }));
+}
+
+function groupsKey(groups) {
+  return normalizeGroups(groups).slice().sort().join('+');
+}
+
+function personInGroups(person, groupIds) {
+  const personGroups = normalizeGroups(person.groups);
+  return groupIds.some((id) => personGroups.includes(id));
+}
+
+function getPeopleForGroups(groupIds) {
+  const groups = normalizeGroups(groupIds);
+  return people.filter((person) => personInGroups(person, groups));
 }
 
 function pruneExpiredGames() {
@@ -119,6 +428,8 @@ function publicGameMeta(game) {
     code: game.code,
     status: game.status,
     round: game.round,
+    max_rounds: game.max_rounds,
+    selected_groups: normalizeGroups(game.selected_groups),
     team_count: Object.keys(game.teams).length
   };
 }
@@ -194,63 +505,250 @@ function withIds(records) {
       suffix += 1;
     }
     seen.add(id);
-    return { ...person, id };
+    return {
+      ...person,
+      id,
+      groups: normalizeGroups(person.groups)
+    };
   });
 }
 
 function ensureDataDir() {
-  if (!DATA_DIR) return;
+  fs.mkdirSync(DATA_ROOT, { recursive: true });
+  if (DATA_DIR) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  // Only seed into a separate DATA_DIR volume (Docker). Local already uses repo data/.
+  if (DATA_DIR && path.resolve(DATA_DIR) !== path.resolve(SEED_DATA_DIR)) {
+    const copyIfMissing = (dest, seedPath, emptyContent) => {
+      if (fs.existsSync(dest)) return;
+      if (fs.existsSync(seedPath)) {
+        fs.copyFileSync(seedPath, dest);
+        console.log(`Seeded ${path.basename(dest)} from repo defaults.`);
+        return;
+      }
+      fs.writeFileSync(dest, emptyContent);
+    };
 
-  const copyIfMissing = (dest, seedPath, emptyContent) => {
-    if (fs.existsSync(dest)) return;
-    if (fs.existsSync(seedPath)) {
-      fs.copyFileSync(seedPath, dest);
-      console.log(`Seeded ${path.basename(dest)} from repo defaults.`);
-      return;
+    copyIfMissing(GROUPS_FILE, seedPathFor('groups.json'), `${JSON.stringify(DEFAULT_GROUPS, null, 4)}\n`);
+    copyIfMissing(LEADERBOARD_FILE, seedPathFor('leaderboard.json'), '[]\n');
+
+    const seedGroupIds = DEFAULT_GROUPS.map((group) => group.id);
+    let seededAnyGroupFile = false;
+    for (const groupId of seedGroupIds) {
+      const dest = peopleFileFor(groupId);
+      const seedPath = seedPathFor(`${groupId}.json`);
+      if (!fs.existsSync(dest) && fs.existsSync(seedPath)) {
+        copyIfMissing(dest, seedPath, '[]\n');
+        seededAnyGroupFile = true;
+      }
     }
-    fs.writeFileSync(dest, emptyContent);
-  };
+    if (!seededAnyGroupFile && !seedGroupIds.some((id) => fs.existsSync(peopleFileFor(id)))) {
+      copyIfMissing(LEGACY_PEOPLE_FILE, seedPathFor('people.json'), '[]\n');
+    }
 
-  copyIfMissing(PEOPLE_FILE, path.join(ROOT, 'people.json'), '[]\n');
-  copyIfMissing(LEADERBOARD_FILE, path.join(ROOT, 'leaderboard.json'), '[]\n');
-
-  const legacyUploads = path.join(ROOT, 'public', 'uploads');
-  if (!fs.existsSync(legacyUploads)) return;
-
-  for (const name of fs.readdirSync(legacyUploads)) {
-    if (name.startsWith('.')) continue;
-    const src = path.join(legacyUploads, name);
-    const dest = path.join(UPLOAD_DIR, name);
-    if (fs.statSync(src).isFile() && !fs.existsSync(dest)) {
-      fs.copyFileSync(src, dest);
+    const legacyUploads = path.join(ROOT, 'public', 'uploads');
+    if (fs.existsSync(legacyUploads)) {
+      for (const name of fs.readdirSync(legacyUploads)) {
+        if (name.startsWith('.')) continue;
+        const src = path.join(legacyUploads, name);
+        const dest = path.join(UPLOAD_DIR, name);
+        if (fs.statSync(src).isFile() && !fs.existsSync(dest)) {
+          fs.copyFileSync(src, dest);
+        }
+      }
     }
   }
 }
 
+function loadGroups() {
+  try {
+    if (!fs.existsSync(GROUPS_FILE)) {
+      const seeded = DEFAULT_GROUPS.map((group) => sanitizeGroup(group, { requireId: true }));
+      fs.writeFileSync(GROUPS_FILE, `${JSON.stringify(seeded, null, 4)}\n`);
+      return seeded;
+    }
+    const raw = fs.readFileSync(GROUPS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return DEFAULT_GROUPS.map((group) => sanitizeGroup(group, { requireId: true }));
+    }
+    const loaded = [];
+    const seen = new Set();
+    let needsPersist = false;
+    for (const entry of parsed) {
+      try {
+        const hadFields = Array.isArray(entry.fields) && entry.fields.length > 0;
+        const group = sanitizeGroup(entry, { requireId: true });
+        if (!hadFields) needsPersist = true;
+        if (seen.has(group.id)) continue;
+        seen.add(group.id);
+        loaded.push(group);
+      } catch (error) {
+        // Skip invalid entries rather than failing the whole catalog.
+      }
+    }
+    if (!seen.has(DEFAULT_GROUP)) {
+      loaded.unshift(sanitizeGroup(DEFAULT_GROUPS[0], { requireId: true }));
+      needsPersist = true;
+    }
+    const result = loaded.length > 0
+      ? loaded
+      : DEFAULT_GROUPS.map((group) => sanitizeGroup(group, { requireId: true }));
+    if (needsPersist) {
+      fs.writeFileSync(GROUPS_FILE, `${JSON.stringify(result, null, 4)}\n`);
+      console.log('Migrated groups.json to include field schemas.');
+    }
+    return result;
+  } catch (error) {
+    console.error(`Unable to load groups.json: ${error.message}`);
+    return DEFAULT_GROUPS.map((group) => sanitizeGroup(group, { requireId: true }));
+  }
+}
+
+function saveGroups() {
+  fs.writeFileSync(GROUPS_FILE, `${JSON.stringify(groups, null, 4)}\n`);
+}
+
+function primaryGroupId(person) {
+  const ids = Array.isArray(person?.groups) ? person.groups : [];
+  for (const id of ids) {
+    if (groupIds.has(id)) return id;
+  }
+  return DEFAULT_GROUP;
+}
+
+function ensurePeopleFileForGroup(groupId) {
+  if (!groupId || !/^[a-z0-9-]+$/.test(groupId)) return;
+  const filePath = peopleFileFor(groupId);
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, '[]\n');
+  }
+}
+
+function readPeopleFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error(`Unable to read ${path.basename(filePath)}: ${error.message}`);
+    return [];
+  }
+}
+
+function writePeopleFile(filePath, entries) {
+  fs.writeFileSync(filePath, `${JSON.stringify(entries, null, 4)}\n`);
+}
+
+function migrateLegacyPeopleFileIfNeeded(knownGroupIds) {
+  const anyGroupFile = knownGroupIds.some((id) => fs.existsSync(peopleFileFor(id)));
+  if (anyGroupFile || !fs.existsSync(LEGACY_PEOPLE_FILE)) return false;
+
+  const legacy = readPeopleFile(LEGACY_PEOPLE_FILE);
+  const partitions = new Map();
+  for (const id of knownGroupIds) partitions.set(id, []);
+
+  legacy.forEach((person) => {
+    const groupsForPerson = Array.isArray(person.groups) && person.groups.length
+      ? person.groups
+      : [DEFAULT_GROUP];
+    const primary = groupsForPerson.find((id) => knownGroupIds.includes(id)) || DEFAULT_GROUP;
+    if (!partitions.has(primary)) partitions.set(primary, []);
+    partitions.get(primary).push({
+      ...person,
+      groups: groupsForPerson
+    });
+  });
+
+  for (const [groupId, entries] of partitions.entries()) {
+    writePeopleFile(peopleFileFor(groupId), entries);
+  }
+
+  const bakPath = `${LEGACY_PEOPLE_FILE}.bak`;
+  try {
+    if (fs.existsSync(bakPath)) fs.unlinkSync(bakPath);
+    fs.renameSync(LEGACY_PEOPLE_FILE, bakPath);
+  } catch (error) {
+    console.error(`Unable to rename legacy people.json: ${error.message}`);
+  }
+  console.log('Migrated people.json into per-group roster files.');
+  return true;
+}
+
 function loadPeople() {
   try {
-    const raw = fs.readFileSync(PEOPLE_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return withIds(Array.isArray(parsed) ? parsed : []);
+    const knownGroupIds = groups.map((group) => group.id);
+    migrateLegacyPeopleFileIfNeeded(knownGroupIds);
+
+    const merged = [];
+    for (const groupId of knownGroupIds) {
+      const filePath = peopleFileFor(groupId);
+      if (!fs.existsSync(filePath)) {
+        writePeopleFile(filePath, []);
+        continue;
+      }
+      const entries = readPeopleFile(filePath);
+      entries.forEach((person) => {
+        const personGroups = Array.isArray(person.groups) && person.groups.length
+          ? person.groups
+          : [groupId];
+        merged.push({
+          ...person,
+          groups: personGroups
+        });
+      });
+    }
+
+    return withIds(merged);
   } catch (error) {
-    console.error(`Unable to load people.json: ${error.message}`);
+    console.error(`Unable to load roster files: ${error.message}`);
     return [];
   }
 }
 
 function savePeople() {
-  // Overwrites people.json with the current 'people' array to persist changes
-  fs.writeFileSync(PEOPLE_FILE, `${JSON.stringify(people, null, 4)}\n`);
+  const partitions = new Map();
+  for (const group of groups) {
+    partitions.set(group.id, []);
+    ensurePeopleFileForGroup(group.id);
+  }
+
+  people.forEach((person) => {
+    const primary = primaryGroupId(person);
+    if (!partitions.has(primary)) partitions.set(primary, []);
+    partitions.get(primary).push(person);
+  });
+
+  for (const [groupId, entries] of partitions.entries()) {
+    writePeopleFile(peopleFileFor(groupId), entries);
+  }
+}
+
+function normalizeLeaderboardEntry(entry) {
+  const groups = normalizeGroups(entry.groups);
+  return {
+    ...entry,
+    groups,
+    groups_key: entry.groups_key || groupsKey(groups),
+    questions: Number.parseInt(entry.questions ?? entry.rounds, 10) || 15,
+    rounds: Number.parseInt(entry.rounds ?? entry.questions, 10) || 15
+  };
 }
 
 function loadLeaderboard() {
   try {
     const raw = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    const entries = parsed.map(normalizeLeaderboardEntry);
+    const needsPersist = parsed.some(
+      (entry) => !Array.isArray(entry.groups) || entry.groups.length === 0 || entry.questions == null
+    );
+    if (needsPersist && entries.length > 0) {
+      saveLeaderboard(entries);
+      console.log('Migrated leaderboard.json to include group tags (default: clients).');
+    }
+    return entries;
   } catch (error) {
     return [];
   }
@@ -265,23 +763,48 @@ function normalizeMaxRounds(value) {
   return rounds === 30 ? 30 : 15;
 }
 
+function filterLeaderboard(entries, groupFilter) {
+  if (!groupFilter || groupFilter === 'all' || (Array.isArray(groupFilter) && groupFilter[0] === 'all')) {
+    return entries
+      .slice()
+      .sort((a, b) => b.score - a.score || new Date(b.recorded_at) - new Date(a.recorded_at));
+  }
+  const key = groupsKey(groupFilter);
+  return entries.filter((entry) => (entry.groups_key || groupsKey(entry.groups)) === key);
+}
+
+function topScoresForKey(entries, key, size = LEADERBOARD_SIZE) {
+  return entries
+    .filter((entry) => (entry.groups_key || groupsKey(entry.groups)) === key)
+    .sort((a, b) => b.score - a.score || new Date(b.recorded_at) - new Date(a.recorded_at))
+    .slice(0, size);
+}
+
 function recordLeaderboardScores(game) {
+  const groups = normalizeGroups(game.selected_groups);
   const entries = loadLeaderboard();
   const recordedAt = new Date().toISOString();
-  const rounds = game.max_rounds || 15;
+  const questions = game.max_rounds || 15;
+  const key = groupsKey(groups);
 
   Object.values(game.teams).forEach((team) => {
     if (!team.name || team.score <= 0) return;
     entries.push({
       team_name: team.name,
       score: team.score,
-      rounds,
+      questions,
+      rounds: questions,
+      groups,
+      groups_key: key,
       recorded_at: recordedAt
     });
   });
 
-  entries.sort((a, b) => b.score - a.score || new Date(b.recorded_at) - new Date(a.recorded_at));
-  saveLeaderboard(entries.slice(0, LEADERBOARD_SIZE));
+  // Keep top N per mode key (single group or multi-group combo).
+  const keys = [...new Set(entries.map((entry) => entry.groups_key || groupsKey(entry.groups)))];
+  const retained = keys.flatMap((entryKey) => topScoresForKey(entries, entryKey));
+  retained.sort((a, b) => b.score - a.score || new Date(b.recorded_at) - new Date(a.recorded_at));
+  saveLeaderboard(retained);
 }
 
 function finalizeGame(game) {
@@ -294,16 +817,61 @@ function finalizeGame(game) {
 }
 
 function sanitizePerson(input) {
-  const name = String(input.name || '').trim();
-  const position = String(input.position || '').trim();
-  const gender = String(input.gender || 'F').trim().toUpperCase() === 'M' ? 'M' : 'F';
+  const groups = normalizeGroups(input.groups);
+  const schema = mergeFieldsForGroups(groups);
+  const incomingValues = input.values && typeof input.values === 'object' ? input.values : {};
+  const values = {};
+
+  let name = String(input.name || incomingValues.name || '').trim();
+  let position = String(input.position || incomingValues.position || '').trim();
+  let gender = String(input.gender || incomingValues.gender || 'F').trim().toUpperCase() === 'M' ? 'M' : 'F';
   const image = String(input.image || '').trim();
 
-  if (!name || !position) {
-    throw new Error('Name and position are required.');
+  schema.forEach((field) => {
+    if (field.type === 'photo') return;
+
+    let raw = incomingValues[field.id];
+    if (raw == null && field.id === 'name') raw = input.name;
+    if (raw == null && field.id === 'position') raw = input.position;
+    if (raw == null && field.id === 'gender') raw = input.gender;
+    if (raw == null && field.id === 'abbreviation') {
+      raw = incomingValues.abbreviation ?? input.abbreviation ?? input.position;
+    }
+
+    const value = String(raw ?? '').trim();
+    if (field.required && field.type !== 'gender' && !value) {
+      throw new Error(`${field.label} is required.`);
+    }
+
+    if (field.type === 'gender') {
+      gender = value.toUpperCase() === 'M' ? 'M' : 'F';
+      return;
+    }
+
+    if (field.id === 'name') {
+      name = value;
+      return;
+    }
+
+    if (field.id === 'position') {
+      position = value;
+      values.position = value;
+      return;
+    }
+
+    values[field.id] = value;
+    if (field.id === 'abbreviation' && !position) position = value;
+  });
+
+  if (!name) throw new Error('Name is required.');
+
+  if (!position) {
+    const secondary = schema.find((field) => field.type === 'text' && field.id !== 'name');
+    if (secondary) position = values[secondary.id] || '—';
+    else position = '—';
   }
 
-  return { name, position, image, gender };
+  return { name, position, image, gender, groups, values };
 }
 
 function saveUploadedPhoto(photo) {
@@ -329,24 +897,54 @@ function saveUploadedPhoto(photo) {
   return `uploads/${filename}`;
 }
 
-function generateOptions(correctPerson) {
-  const names = [correctPerson.name];
-  const positions = [correctPerson.position];
-  const targetGender = correctPerson.gender || 'F';
-  const sameGenderPeople = people.filter((person) => (person.gender || 'F') === targetGender);
-  const namePool = sameGenderPeople.length >= 4 ? sameGenderPeople : people;
+function generateFieldOptions(correctPerson, pool = people, guessFields = []) {
+  const optionPool = Array.isArray(pool) && pool.length > 0 ? pool : people;
+  const fields = Array.isArray(guessFields) && guessFields.length > 0
+    ? guessFields
+    : getGuessFields([DEFAULT_GROUP]);
+  const options = {};
 
-  while (names.length < 4 && namePool.length > names.length) {
-    const person = namePool[Math.floor(Math.random() * namePool.length)];
-    if (!names.includes(person.name)) names.push(person.name);
-  }
+  fields.forEach((field) => {
+    const correctValue = getPersonFieldValue(correctPerson, field.id);
+    const choices = [];
+    if (correctValue) choices.push(correctValue);
 
-  while (positions.length < 4 && people.length > positions.length) {
-    const person = people[Math.floor(Math.random() * people.length)];
-    if (!positions.includes(person.position)) positions.push(person.position);
-  }
+    let sourcePool = optionPool;
+    if (field.filter_by_gender) {
+      const targetGender = getPersonFieldValue(correctPerson, 'gender') || 'F';
+      const sameGenderPeople = optionPool.filter(
+        (person) => (getPersonFieldValue(person, 'gender') || 'F') === targetGender
+      );
+      if (sameGenderPeople.length >= 4) sourcePool = sameGenderPeople;
+    }
 
-  return [shuffle(names), shuffle(positions)];
+    const candidates = shuffle(
+      [...new Set(
+        sourcePool
+          .map((person) => getPersonFieldValue(person, field.id))
+          .filter((value) => value && value !== correctValue)
+      )]
+    );
+
+    for (const value of candidates) {
+      if (choices.length >= 4) break;
+      choices.push(value);
+    }
+
+    options[field.id] = shuffle(choices);
+  });
+
+  return {
+    options,
+    guess_fields: fields.map((field) => ({ id: field.id, label: field.label })),
+    options_name: options.name || [],
+    options_pos: options.position || options.abbreviation || []
+  };
+}
+
+function generateOptions(correctPerson, pool = people) {
+  const generated = generateFieldOptions(correctPerson, pool, getGuessFields([DEFAULT_GROUP]));
+  return [generated.options_name, generated.options_pos];
 }
 
 function shuffle(items) {
@@ -359,9 +957,19 @@ function shuffle(items) {
 }
 
 function pickNextPerson(game) {
-  const usedIds = new Set(game.used_person_ids || []);
-  const available = people.filter((person) => !usedIds.has(person.id));
-  if (available.length === 0) return null;
+  const pool = getPeopleForGroups(game.selected_groups);
+  if (pool.length === 0) return null;
+
+  let usedIds = new Set(game.used_person_ids || []);
+  let available = pool.filter((person) => !usedIds.has(person.id));
+
+  // After every entry has appeared once, reshuffle and continue for remaining questions.
+  if (available.length === 0) {
+    game.used_person_ids = [];
+    usedIds = new Set();
+    available = pool;
+  }
+
   return available[Math.floor(Math.random() * available.length)];
 }
 
@@ -418,9 +1026,12 @@ function safeState(game) {
   if (game.status === 'question' && game.current_person) {
     clientState.options_name = game.options_name;
     clientState.options_pos = game.options_pos;
+    clientState.options = game.options || {};
+    clientState.guess_fields = game.guess_fields || [];
   } else if (game.status === 'reveal') {
     clientState.person = game.current_person;
     clientState.teams = game.teams;
+    clientState.guess_fields = game.guess_fields || [];
   }
 
   return clientState;
@@ -441,6 +1052,13 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'GET' && url.pathname === '/api/people') {
     return sendJson(res, people);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/groups') {
+    return sendJson(res, {
+      groups: groupsWithCounts(),
+      default: DEFAULT_GROUP
+    });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/reconnect') {
@@ -465,7 +1083,17 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === 'GET' && url.pathname === '/api/leaderboard') {
-    return sendJson(res, loadLeaderboard());
+    const entries = loadLeaderboard();
+    const groupParam = url.searchParams.get('group') || url.searchParams.get('groups');
+    if (groupParam) {
+      if (groupParam === 'all') {
+        return sendJson(res, filterLeaderboard(entries, 'all').slice(0, LEADERBOARD_SIZE));
+      }
+      const groups = normalizeGroups(groupParam.split(','));
+      return sendJson(res, filterLeaderboard(entries, groups).slice(0, LEADERBOARD_SIZE));
+    }
+    // Default board is the combined All view.
+    return sendJson(res, filterLeaderboard(entries, 'all').slice(0, LEADERBOARD_SIZE));
   }
 
   const data = await readBody(req);
@@ -473,6 +1101,50 @@ async function handleApi(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/api/manager/login') {
     requireManager(req, data);
     return sendJson(res, { success: true });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/groups') {
+    requireManager(req, data);
+    const group = sanitizeGroup(data);
+    if (groupIds.has(group.id)) {
+      return sendJson(res, { success: false, error: 'A group with that id already exists.' }, 409);
+    }
+    groups.push(group);
+    rebuildGroupIds();
+    saveGroups();
+    ensurePeopleFileForGroup(group.id);
+    return sendJson(res, { success: true, group, groups: groupsWithCounts() }, 201);
+  }
+
+  const groupMatch = url.pathname.match(/^\/api\/groups\/([^/]+)$/);
+  if (groupMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+    const id = decodeURIComponent(groupMatch[1]);
+    const index = groups.findIndex((group) => group.id === id);
+    if (index === -1) return sendJson(res, { success: false, error: 'Group not found.' }, 404);
+
+    if (req.method === 'DELETE') {
+      requireManager(req, data);
+      if (id === DEFAULT_GROUP) {
+        return sendJson(res, { success: false, error: 'The default Clients group cannot be deleted.' }, 400);
+      }
+      const inUse = people.some((person) => personInGroups(person, [id]));
+      if (inUse) {
+        return sendJson(res, {
+          success: false,
+          error: 'Remove or reassign roster items in this group before deleting it.'
+        }, 409);
+      }
+      groups.splice(index, 1);
+      rebuildGroupIds();
+      saveGroups();
+      return sendJson(res, { success: true, groups: groupsWithCounts() });
+    }
+
+    requireManager(req, data);
+    const updated = sanitizeGroup({ ...data, id });
+    groups[index] = updated;
+    saveGroups();
+    return sendJson(res, { success: true, group: groups[index], groups: groupsWithCounts() });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/host/session') {
@@ -489,6 +1161,12 @@ async function handleApi(req, res, url) {
     }
 
     const game = createGameState();
+    if (data.groups || data.selected_groups) {
+      game.selected_groups = normalizeGroups(data.groups || data.selected_groups);
+    }
+    if (data.max_rounds != null) {
+      game.max_rounds = normalizeMaxRounds(data.max_rounds);
+    }
     games.set(game.code, game);
     return sendJson(res, {
       success: true,
@@ -533,31 +1211,48 @@ async function handleApi(req, res, url) {
     const teamId = data.team_id;
     const team = game.teams[teamId];
     if (team && game.status === 'question' && !team.answered && game.current_person) {
-      const nameAnswer = data.name;
-      const positionAnswer = data.position;
+      const guessFields = Array.isArray(game.guess_fields) && game.guess_fields.length
+        ? game.guess_fields
+        : [
+          { id: 'name', label: 'Name' },
+          { id: 'position', label: 'Position' }
+        ];
+      const answers = data.answers && typeof data.answers === 'object' ? data.answers : {
+        name: data.name,
+        position: data.position
+      };
       const timeTaken = (Date.now() / 1000) - game.start_time;
       const timeLimit = game.time_limit || 30;
-      let correctName = nameAnswer === game.current_person.name;
-      let correctPosition = positionAnswer === game.current_person.position;
+      const correctByField = {};
+      let allCorrect = true;
+      let correctCount = 0;
+
+      guessFields.forEach((field) => {
+        const expected = getPersonFieldValue(game.current_person, field.id);
+        const given = String(answers[field.id] ?? '').trim();
+        let isCorrect = given === expected;
+        if (timeTaken > timeLimit) isCorrect = false;
+        correctByField[field.id] = isCorrect;
+        if (isCorrect) correctCount += 1;
+        else allCorrect = false;
+      });
 
       team.answered = true;
       team.time_taken = timeTaken;
-
-      if (timeTaken > timeLimit) {
-        correctName = false;
-        correctPosition = false;
-      }
-
-      team.correct_name = correctName;
-      team.correct_pos = correctPosition;
+      team.correct_fields = correctByField;
+      team.correct_name = Boolean(correctByField.name);
+      team.correct_pos = Boolean(
+        correctByField.position
+        || correctByField.abbreviation
+        || (guessFields[1] && correctByField[guessFields[1].id])
+      );
 
       let points = 0;
       const instantWindowSeconds = 3;
       const speedTime = Math.max(0, timeTaken - instantWindowSeconds);
       const speedMultiplier = Math.max(0.1, 1 - (speedTime / timeLimit));
-      if (correctName) points += Math.floor(1000 * speedMultiplier);
-      if (correctPosition) points += Math.floor(1000 * speedMultiplier);
-      if (correctName && correctPosition) points += 500;
+      points += correctCount * Math.floor(1000 * speedMultiplier);
+      if (allCorrect && guessFields.length > 1) points += 500;
       team.score += points;
       touchGame(game);
     }
@@ -572,8 +1267,15 @@ async function handleApi(req, res, url) {
         error: 'Reveal the answer or wait for the timer before starting the next round.'
       }, 400);
     }
-    if (people.length === 0) {
-      return sendJson(res, { success: false, error: 'Add at least one staff member before starting.' }, 400);
+    if (data.groups || data.selected_groups) {
+      game.selected_groups = normalizeGroups(data.groups || data.selected_groups);
+    }
+    const pool = getPeopleForGroups(game.selected_groups);
+    if (pool.length === 0) {
+      return sendJson(res, {
+        success: false,
+        error: 'No people in the selected groups. Add roster entries or choose different groups.'
+      }, 400);
     }
     if (game.round >= game.max_rounds) {
       return sendJson(res, { success: false, error: 'All rounds are complete. End the game to finish.' }, 400);
@@ -584,22 +1286,29 @@ async function handleApi(req, res, url) {
     if (!nextPerson) {
       return sendJson(res, {
         success: false,
-        error: 'All staff members have been shown. End the game to finish.'
+        error: 'No people in the selected groups. Add roster entries or choose different groups.'
       }, 400);
     }
+
+    const guessFields = getGuessFields(game.selected_groups);
+    const generated = generateFieldOptions(nextPerson, pool, guessFields);
 
     game.status = 'question';
     game.round += 1;
     game.time_limit = Number.parseInt(data.time_limit, 10) || 30;
     game.current_person = nextPerson;
     game.used_person_ids.push(nextPerson.id);
-    [game.options_name, game.options_pos] = generateOptions(game.current_person);
+    game.options = generated.options;
+    game.guess_fields = generated.guess_fields;
+    game.options_name = generated.options_name;
+    game.options_pos = generated.options_pos;
     game.start_time = Date.now() / 1000;
 
     Object.values(game.teams).forEach((team) => {
       team.answered = false;
       team.correct_name = false;
       team.correct_pos = false;
+      team.correct_fields = {};
       team.time_taken = 0;
     });
     touchGame(game);
@@ -619,8 +1328,20 @@ async function handleApi(req, res, url) {
       return sendJson(res, { success: false, error: 'Settings cannot be changed during an active round.' }, 400);
     }
     game.max_rounds = normalizeMaxRounds(data.max_rounds ?? game.max_rounds);
+    if (data.groups || data.selected_groups) {
+      game.selected_groups = normalizeGroups(data.groups || data.selected_groups);
+    }
+    // Changing groups mid-game resets the used pool so new groups can appear.
+    if (data.groups || data.selected_groups) {
+      game.used_person_ids = [];
+    }
     touchGame(game);
-    return sendJson(res, { success: true, max_rounds: game.max_rounds });
+    return sendJson(res, {
+      success: true,
+      max_rounds: game.max_rounds,
+      selected_groups: game.selected_groups,
+      pool_size: getPeopleForGroups(game.selected_groups).length
+    });
   }
 
   if (req.method === 'POST' && url.pathname === '/api/host/end') {
@@ -643,6 +1364,9 @@ async function handleApi(req, res, url) {
     game.teams = {};
     game.start_time = 0;
     game.scores_recorded = false;
+    if (data.groups || data.selected_groups) {
+      game.selected_groups = normalizeGroups(data.groups || data.selected_groups);
+    }
     touchGame(game);
     return sendJson(res, { success: true });
   }
@@ -653,7 +1377,7 @@ async function handleApi(req, res, url) {
     person.image = saveUploadedPhoto(data.photo) || person.image;
     person.id = makeId(person, people.length);
     people = withIds([...people, person]);
-    savePeople(); // Persist the new staff member to people.json
+    savePeople(); // Persist the new roster entry to per-group files
     return sendJson(res, { success: true, person: people[people.length - 1] }, 201);
   }
 
@@ -673,7 +1397,7 @@ async function handleApi(req, res, url) {
           touchGame(game);
         }
       }
-      savePeople(); // Persist the deletion to people.json
+      savePeople(); // Persist the deletion to per-group files
       return sendJson(res, { success: true });
     }
 
@@ -689,7 +1413,7 @@ async function handleApi(req, res, url) {
         touchGame(game);
       }
     }
-    savePeople(); // Persist the updates to people.json
+    savePeople(); // Persist the updates to per-group files
     return sendJson(res, { success: true, person: people[index] });
   }
 
@@ -818,6 +1542,8 @@ function startServer(port = PORT) {
 }
 
 ensureDataDir();
+groups = loadGroups();
+rebuildGroupIds();
 let people = loadPeople();
 
 if (require.main === module) {
