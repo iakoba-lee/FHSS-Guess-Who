@@ -1,1 +1,13 @@
 .env
+.DS_Store
+
+# Local-only served photos (ship to VM via rsync — see notes for jacob/README.md)
+public/media/students/
+public/media/internal-staff/
+
+# Jacob’s local reference dumps (instructions README is tracked)
+notes for jacob/photos-students/
+notes for jacob/photos-review/
+notes for jacob/people.json.bak
+notes for jacob/.DS_Store
+notes for jacob/data.DS_Store

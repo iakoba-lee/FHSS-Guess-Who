@@ -74,8 +74,7 @@
                                 <img id="target-photo" src="" alt="Person Photo" />
                             </div>
                             <div id="target-info" class="hidden" style="text-align: center;">
-                                <h2 id="target-name" style="margin-bottom: 0.5rem;">Name</h2>
-                                <p id="target-pos" style="color: var(--byu-royal); font-weight: bold; font-size: 1.25rem;">Position</p>
+                                <div id="target-reveal-fields" class="target-reveal-fields"></div>
                             </div>
                         </div>
 
@@ -241,6 +240,7 @@
                     <select id="round-count">
                         <option value="15" selected>15</option>
                         <option value="30">30</option>
+                        <option value="all">All</option>
                     </select>
                 </div>
             </div>
@@ -266,10 +266,11 @@
         let revealRequestedForRound = false;
         let endGameRequested = false;
         let pendingMaxRounds = null;
+        let pendingRoundsMode = null;
         let settingsModalInitial = false;
         let staffPeople = [];
         let groupsCatalog = [];
-        let hostSelectedGroups = ['clients'];
+        let hostSelectedGroups = [];
         let staffFilterGroup = 'all';
         let managerEditorView = 'group';
         let currentPhotoData = null;
@@ -328,7 +329,6 @@
                 staffFilterGroup = 'all';
             }
             hostSelectedGroups = hostSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
-            if (hostSelectedGroups.length === 0) hostSelectedGroups = ['clients'];
             renderHostGroupPicker();
             renderGroupManager();
             renderStaffFilterTabs();
@@ -364,6 +364,7 @@
             const el = document.getElementById('host-group-count');
             if (!el) return;
             const size = getHostPoolSize();
+            updateAllRoundsOptionLabel(size);
             const labels = groupsCatalog
                 .filter(group => hostSelectedGroups.includes(group.id))
                 .map(group => group.label);
@@ -374,23 +375,28 @@
             el.innerText = `${size} ${size === 1 ? 'entry' : 'entries'} from ${labels.join(' + ')}`;
         }
 
+        function updateAllRoundsOptionLabel(size = getHostPoolSize()) {
+            const select = document.getElementById('round-count');
+            const allOption = select?.querySelector('option[value="all"]');
+            if (!allOption) return;
+            allOption.textContent = size > 0 ? `All (${size})` : 'All';
+        }
+
         function onHostGroupsChanged() {
             const checked = [...document.querySelectorAll('#host-group-options input[type="checkbox"]:checked')]
                 .map(input => input.value);
-            if (checked.length === 0) {
-                renderHostGroupPicker();
-                setGameSettingsMessage('Select at least one group.', true);
-                return;
-            }
             hostSelectedGroups = checked;
-            setGameSettingsMessage('');
+            if (checked.length === 0) {
+                setGameSettingsMessage('Select at least one group.', true);
+            } else {
+                setGameSettingsMessage('');
+            }
             updateHostGroupCount();
         }
 
         function getSelectedHostGroups() {
-            const checked = [...document.querySelectorAll('#host-group-options input[type="checkbox"]:checked')]
+            return [...document.querySelectorAll('#host-group-options input[type="checkbox"]:checked')]
                 .map(input => input.value);
-            return checked.length > 0 ? checked : hostSelectedGroups;
         }
 
         function renderStaffGroupOptions(selectedGroups = ['clients'], person = null) {
@@ -460,10 +466,13 @@
         }
 
         function defaultFieldsForGroup(group, category = null) {
+            // Prefer an existing group's schema so custom fields (e.g. fun_fact) are preserved.
+            if (group && Array.isArray(group.fields) && group.fields.length) {
+                return cloneFields(group.fields);
+            }
             if (category === 'person') return cloneFields(DEFAULT_PEOPLE_FIELDS);
             if (category === 'other') return cloneFields(DEFAULT_PLACE_FIELDS);
             if (!group) return cloneFields(DEFAULT_PLACE_FIELDS);
-            if (Array.isArray(group.fields) && group.fields.length) return cloneFields(group.fields);
             if (group.id === 'clients' || group.id === 'internal-staff') return cloneFields(DEFAULT_PEOPLE_FIELDS);
             return cloneFields(DEFAULT_PLACE_FIELDS);
         }
@@ -499,6 +508,16 @@
             return merged;
         }
 
+        function fieldsForStaffForm(selectedGroups = defaultStaffFormGroups(), category = null) {
+            const merged = mergeFieldsFromGroups(selectedGroups);
+            // If the selected pool already defines fields (including custom ones), use those.
+            if (merged.some(field => !['photo', 'name', 'position', 'abbreviation', 'gender'].includes(field.id))) {
+                return merged;
+            }
+            if (merged.length) return merged;
+            return fieldsForCategory(category || 'person');
+        }
+
         function inferStaffEntryCategory(groupIds, person = null) {
             const groups = person && Array.isArray(person.groups) && person.groups.length
                 ? person.groups
@@ -532,9 +551,53 @@
             if (fieldId === 'position') return person.position || '';
             if (fieldId === 'gender') return person.gender || 'F';
             if (fieldId === 'photo') return person.image || '';
-            if (person.values && person.values[fieldId] != null) return String(person.values[fieldId]);
+            if (person.values && person.values[fieldId] != null) {
+                const value = String(person.values[fieldId]).trim();
+                if (value) return value;
+            }
+            if (fieldId.includes('-') || fieldId.includes('_')) {
+                const alt = fieldId.includes('-')
+                    ? fieldId.replace(/-/g, '_')
+                    : fieldId.replace(/_/g, '-');
+                if (person.values && person.values[alt] != null) {
+                    const value = String(person.values[alt]).trim();
+                    if (value) return value;
+                }
+            }
             if (fieldId === 'abbreviation') return person.position || '';
+            if (fieldId === 'fun_fact' || fieldId === 'fun-fact') return 'TBD';
             return '';
+        }
+
+        function renderTargetReveal(person, guessFields) {
+            const container = document.getElementById('target-reveal-fields');
+            if (!container || !person) return;
+
+            const fields = Array.isArray(guessFields) && guessFields.length
+                ? guessFields
+                : [
+                    { id: 'name', label: 'Name' },
+                    { id: 'position', label: 'Position / Detail' }
+                ];
+
+            container.innerHTML = fields.map((field, index) => {
+                const value = getPersonFieldValue(person, field.id) || '—';
+                const label = field.label || field.id;
+                if (index === 0) {
+                    return `
+                        <div class="target-reveal-row target-reveal-row--primary">
+                            <div class="target-reveal-label">${escapeHtml(label)}</div>
+                            <div class="target-reveal-value target-reveal-value--primary">${escapeHtml(value)}</div>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="target-reveal-row">
+                        <div class="target-reveal-label">${escapeHtml(label)}</div>
+                        <div class="target-reveal-value">${escapeHtml(value)}</div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderStaffEntryFields(selectedGroups = defaultStaffFormGroups(), person = null, options = {}) {
@@ -544,7 +607,7 @@
             const category = options.keepCategory
                 ? getStaffEntryCategory(selectedGroups, person)
                 : (options.category || inferStaffEntryCategory(selectedGroups, person));
-            const fields = fieldsForCategory(category);
+            const fields = fieldsForStaffForm(selectedGroups, category);
 
             const existingValues = {};
             fields.forEach(field => {
@@ -600,9 +663,11 @@
                     ? 'e.g. JFSB'
                     : field.id === 'name'
                         ? (category === 'person' ? 'Name' : 'Full name')
-                        : field.id === 'position'
-                            ? 'Position or detail'
-                            : '';
+                        : field.id === 'position' || field.id === 'team'
+                            ? (field.id === 'team' ? 'Team (title for now)' : 'Position or detail')
+                            : field.id === 'fun_fact'
+                                ? 'A short fun fact'
+                                : '';
                 return `
                     <label>
                         ${escapeHtml(field.label)}
@@ -642,7 +707,7 @@
         function collectStaffFormValues() {
             const groups = getStaffFormGroups();
             const category = getStaffEntryCategory(groups);
-            const fields = fieldsForCategory(category);
+            const fields = fieldsForStaffForm(groups, category);
             const values = {};
             fields.forEach(field => {
                 if (field.type === 'photo') return;
@@ -937,6 +1002,20 @@
 
         function getSortedTeams(state) {
             return Object.values(state.teams || {}).sort((a, b) => b.score - a.score);
+        }
+
+        function formatRevealStars(team, guessFields) {
+            const fields = Array.isArray(guessFields) && guessFields.length
+                ? guessFields
+                : [{ id: 'name' }, { id: 'position' }];
+            let earned = 0;
+            if (team.correct_fields && typeof team.correct_fields === 'object') {
+                earned = fields.filter(field => Boolean(team.correct_fields[field.id])).length;
+            } else {
+                // Legacy fallback for older round payloads.
+                earned = (team.correct_name ? 1 : 0) + (team.correct_pos ? 1 : 0);
+            }
+            return earned > 0 ? '⭐'.repeat(earned) : '❌';
         }
 
         function podiumConfetti(intensity) {
@@ -1289,8 +1368,12 @@
                     staffPeople = [];
                 }
             }
-            hostSelectedGroups = hostSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
-            if (hostSelectedGroups.length === 0) hostSelectedGroups = [groupsCatalog[0]?.id || 'clients'];
+            if (initial) {
+                // New games start with no group pre-selected — host must choose.
+                hostSelectedGroups = [];
+            } else {
+                hostSelectedGroups = hostSelectedGroups.filter(id => groupsCatalog.some(group => group.id === id));
+            }
             renderHostGroupPicker();
             modal.classList.remove('hidden');
         }
@@ -1301,30 +1384,50 @@
             setGameSettingsMessage('');
         }
 
+        function getSelectedRoundsMode() {
+            const value = document.getElementById('round-count').value;
+            if (value === 'all') return 'all';
+            if (value === '30') return '30';
+            return '15';
+        }
+
         function getSelectedMaxRounds() {
-            return document.getElementById('round-count').value === '30' ? 30 : 15;
+            if (getSelectedRoundsMode() === 'all') {
+                return Math.max(1, getHostPoolSize());
+            }
+            return getSelectedRoundsMode() === '30' ? 30 : 15;
+        }
+
+        function roundsToSelectValue(maxRounds, poolSize = getHostPoolSize()) {
+            const rounds = Number(maxRounds) || 15;
+            if (rounds === 15) return '15';
+            if (rounds === 30) return '30';
+            if (poolSize > 0 && rounds === poolSize) return 'all';
+            return rounds >= 30 ? '30' : '15';
         }
 
         function syncMaxRoundsSelect(maxRounds) {
             if (isSettingsModalOpen()) return;
             const select = document.getElementById('round-count');
-            const serverVal = maxRounds === 30 ? '30' : '15';
+            const rounds = Number(maxRounds) || 15;
+            const poolSize = getHostPoolSize();
+
             if (pendingMaxRounds !== null) {
-                if (serverVal === String(pendingMaxRounds)) {
+                if (rounds === pendingMaxRounds) {
                     pendingMaxRounds = null;
-                    select.value = serverVal;
+                    select.value = pendingRoundsMode || roundsToSelectValue(rounds, poolSize);
+                    pendingRoundsMode = null;
                 } else {
-                    select.value = String(pendingMaxRounds);
+                    select.value = pendingRoundsMode || roundsToSelectValue(pendingMaxRounds, poolSize);
                     return;
                 }
             } else {
-                select.value = serverVal;
+                select.value = roundsToSelectValue(rounds, poolSize);
             }
         }
 
         async function updateGameSettings() {
             if (!hostCode || !hostToken) return false;
-            const selected = getSelectedMaxRounds();
             const groups = getSelectedHostGroups();
             if (groups.length === 0) {
                 setGameSettingsMessage('Select at least one group.', true);
@@ -1335,7 +1438,10 @@
                 return false;
             }
             hostSelectedGroups = groups;
+            const mode = getSelectedRoundsMode();
+            const selected = getSelectedMaxRounds();
             pendingMaxRounds = selected;
+            pendingRoundsMode = mode;
             const response = await fetch('/api/host/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1344,6 +1450,7 @@
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
                 pendingMaxRounds = null;
+                pendingRoundsMode = null;
                 setGameSettingsMessage(result.error || 'Could not save settings.', true);
                 return false;
             }
@@ -1427,10 +1534,12 @@
             });
             if (!response.ok) return;
             pendingMaxRounds = null;
+            pendingRoundsMode = null;
             revealRequestedForRound = false;
             endGameRequested = false;
             currentRound = 0;
             currentHostState = 'lobby';
+            hostSelectedGroups = [];
             resetPodiumReveal();
             openGameSettingsModal({ initial: true });
         }
@@ -1737,7 +1846,7 @@
                 })
                 .then(state => {
                     syncMaxRoundsSelect(state.max_rounds || 15);
-                    if (Array.isArray(state.selected_groups) && state.selected_groups.length) {
+                    if (!isSettingsModalOpen() && Array.isArray(state.selected_groups) && state.selected_groups.length) {
                         hostSelectedGroups = state.selected_groups;
                     }
                     setEditGameEnabled(state.status !== 'question');
@@ -1793,12 +1902,7 @@
                             document.getElementById('target-photo').src = photoUrl;
                             document.getElementById('target-photo-container').classList.remove('hidden');
                             document.getElementById('target-info').classList.remove('hidden');
-                            document.getElementById('target-name').innerText = state.current_person.name;
-                            const secondary = (state.current_person.values && (
-                                state.current_person.values.abbreviation
-                                || state.current_person.values.position
-                            )) || state.current_person.position;
-                            document.getElementById('target-pos').innerText = secondary || '';
+                            renderTargetReveal(state.current_person, state.guess_fields);
                         }
                         if (currentHostState !== 'reveal') {
                             if (!isFinalRoundPodium(state)) {
@@ -1831,6 +1935,9 @@
                         }
 
                         const sortedTeams = getSortedTeams(state);
+                        const guessFields = Array.isArray(state.guess_fields) && state.guess_fields.length
+                            ? state.guess_fields
+                            : [{ id: 'name' }, { id: 'position' }];
                         let newHtml = '';
                         sortedTeams.forEach(t => {
                             let statusHtml = '';
@@ -1838,7 +1945,7 @@
                                 if (t.answered) statusHtml = '<span class="status-badge status-answered">Answered</span>';
                                 else statusHtml = '<span class="status-badge status-waiting">Thinking...</span>';
                             } else if (state.status === 'reveal') {
-                                statusHtml = `<span>${t.correct_name && t.correct_pos ? '⭐⭐' : (t.correct_name || t.correct_pos ? '⭐' : '❌')}</span>`;
+                                statusHtml = `<span>${formatRevealStars(t, guessFields)}</span>`;
                             }
 
                             const scoreDisplay = (state.status === 'question') ? '—' : t.score;

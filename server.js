@@ -102,9 +102,60 @@ const PLACE_FIELDS = [
   }
 ];
 
+const STUDENT_EMPLOYEE_FIELDS = [
+  {
+    id: 'photo',
+    label: 'Photo',
+    type: 'photo',
+    required: false,
+    shown: true,
+    guessed: false,
+    filter_by_gender: false
+  },
+  {
+    id: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: true
+  },
+  {
+    id: 'team',
+    label: 'Team',
+    type: 'text',
+    required: true,
+    shown: false,
+    guessed: true,
+    filter_by_gender: false
+  },
+  {
+    id: 'fun_fact',
+    label: 'Fun Fact',
+    type: 'text',
+    required: false,
+    shown: false,
+    guessed: true,
+    filter_by_gender: false
+  },
+  {
+    id: 'gender',
+    label: 'Gender for Name Options',
+    type: 'gender',
+    required: true,
+    shown: false,
+    guessed: false,
+    filter_by_gender: false
+  }
+];
+
 function defaultFieldsForGroupId(groupId) {
   if (groupId === 'clients' || groupId === 'internal-staff') {
     return PEOPLE_FIELDS.map((field) => ({ ...field }));
+  }
+  if (groupId === 'student-employees') {
+    return STUDENT_EMPLOYEE_FIELDS.map((field) => ({ ...field }));
   }
   return PLACE_FIELDS.map((field) => ({ ...field }));
 }
@@ -133,6 +184,12 @@ const DEFAULT_GROUPS = [
     label: 'Departments',
     description: 'FHSS departments we service',
     fields: defaultFieldsForGroupId('departments')
+  },
+  {
+    id: 'student-employees',
+    label: 'Student Employees',
+    description: 'Guess their name, team, and a fun fact from their photo',
+    fields: defaultFieldsForGroupId('student-employees')
   }
 ];
 const DEFAULT_GROUP = 'clients';
@@ -231,12 +288,21 @@ function slugifyGroupId(value) {
     .slice(0, 48);
 }
 
+function slugifyFieldId(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 48);
+}
+
 function sanitizeField(input = {}, index = 0) {
   let type = String(input.type || 'text').trim().toLowerCase();
   if (!['text', 'photo', 'gender'].includes(type)) type = 'text';
 
-  let id = slugifyGroupId(input.id || input.label || `field-${index + 1}`);
-  if (!id) id = `field-${index + 1}`;
+  let id = slugifyFieldId(input.id || input.label || `field_${index + 1}`);
+  if (!id) id = `field_${index + 1}`;
   if (type === 'photo') id = 'photo';
   if (type === 'gender') id = 'gender';
 
@@ -355,18 +421,36 @@ function getGuessFields(groupIdsInput) {
   );
 }
 
+function getPersonQuizGroups(person, selectedGroupIds) {
+  const selected = normalizeGroups(selectedGroupIds);
+  const personGroups = normalizeGroups(person?.groups);
+  const overlap = personGroups.filter((id) => selected.includes(id));
+  if (overlap.length > 0) return overlap;
+  if (personGroups.length > 0) return personGroups;
+  return selected;
+}
+
 function getPersonFieldValue(person, fieldId) {
   if (!person) return '';
   if (fieldId === 'name') return String(person.name || '');
   if (fieldId === 'position') return String(person.position || '');
   if (fieldId === 'gender') return String(person.gender || 'F');
   if (fieldId === 'photo') return String(person.image || '');
-  const fromValues = person.values && person.values[fieldId] != null
-    ? String(person.values[fieldId])
-    : '';
-  if (fromValues) return fromValues;
+
+  const valueKeys = [fieldId];
+  if (fieldId.includes('-')) valueKeys.push(fieldId.replace(/-/g, '_'));
+  if (fieldId.includes('_')) valueKeys.push(fieldId.replace(/_/g, '-'));
+  for (const key of valueKeys) {
+    const fromValues = person.values && person.values[key] != null
+      ? String(person.values[key]).trim()
+      : '';
+    if (fromValues) return fromValues;
+  }
+
   // Migration: older place/department entries stored abbreviation in position.
   if (fieldId === 'abbreviation') return String(person.position || '');
+  // Placeholder so games remain playable before real fun facts are written.
+  if (fieldId === 'fun_fact' || fieldId === 'fun-fact') return 'TBD';
   return '';
 }
 
@@ -760,7 +844,9 @@ function saveLeaderboard(entries) {
 
 function normalizeMaxRounds(value) {
   const rounds = Number.parseInt(value, 10);
-  return rounds === 30 ? 30 : 15;
+  if (!Number.isFinite(rounds) || rounds < 1) return 15;
+  const cap = Math.max(people.length, 1);
+  return Math.min(Math.floor(rounds), cap);
 }
 
 function filterLeaderboard(entries, groupFilter) {
@@ -929,6 +1015,16 @@ function generateFieldOptions(correctPerson, pool = people, guessFields = []) {
     for (const value of candidates) {
       if (choices.length >= 4) break;
       choices.push(value);
+    }
+
+    // Keep Fun Fact playable before real facts exist (all TBD → only one unique value).
+    if (field.id === 'fun_fact' || field.id === 'fun-fact') {
+      let n = 2;
+      while (choices.length < 4) {
+        const filler = `TBD ${n}`;
+        if (!choices.includes(filler)) choices.push(filler);
+        n += 1;
+      }
     }
 
     options[field.id] = shuffle(choices);
@@ -1290,8 +1386,10 @@ async function handleApi(req, res, url) {
       }, 400);
     }
 
-    const guessFields = getGuessFields(game.selected_groups);
-    const generated = generateFieldOptions(nextPerson, pool, guessFields);
+    const quizGroups = getPersonQuizGroups(nextPerson, game.selected_groups);
+    const guessFields = getGuessFields(quizGroups);
+    const fieldPool = getPeopleForGroups(quizGroups);
+    const generated = generateFieldOptions(nextPerson, fieldPool, guessFields);
 
     game.status = 'question';
     game.round += 1;

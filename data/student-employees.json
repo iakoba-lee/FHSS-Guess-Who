@@ -1,0 +1,744 @@
+[
+    {
+        "name": "Natania Michael",
+        "position": "Web Team",
+        "image": "media/students/natania-michael.jpg",
+        "gender": "F",
+        "id": "natania-michael-cfhg-web-developer-0",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Parker Hemming",
+        "position": "Web Team",
+        "image": "media/students/parker-hemming.jpg",
+        "gender": "M",
+        "id": "parker-hemming-fhss-web-developer-1",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Yuto Akatsuka",
+        "position": "Web Team",
+        "image": "media/students/yuto-akatsuka.jpg",
+        "gender": "M",
+        "id": "yuto-akatsuka-fhss-web-developer-2",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "James Bangerter",
+        "position": "Web Team",
+        "image": "media/students/james-bangerter.jpg",
+        "gender": "M",
+        "id": "james-bangerter-student-worker-5-3",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Joshua Hewitt",
+        "position": "Digital Media Team",
+        "image": "media/students/joshua-hewitt.jpg",
+        "gender": "M",
+        "id": "joshua-hewitt-digital-media-production-specialist-4",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Jackson McLean",
+        "position": "Web Team",
+        "image": "media/students/jackson-mclean.jpg",
+        "gender": "M",
+        "id": "jackson-mclean-fhss-web-developer-5",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Ashley Doyle",
+        "position": "Lab Team",
+        "image": "media/students/ashley-doyle.jpg",
+        "gender": "F",
+        "id": "ashley-doyle-lab-assistant-6",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Audrey Davis",
+        "position": "Projects Team",
+        "image": "media/students/audrey-davis.jpg",
+        "gender": "F",
+        "id": "audrey-davis-graphic-designer-7",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Paige Jensen-Rutter",
+        "position": "Digital Media Team",
+        "image": "media/students/paige-jensen-rutter.jpg",
+        "gender": "F",
+        "id": "paige-jensen-rutter-media-production-specialist-8",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Enya Arevalo Chaves",
+        "position": "Projects Team",
+        "image": "media/students/enya-arevalo-chaves.jpg",
+        "gender": "F",
+        "id": "enya-arevalo-chaves-graphic-designer-9",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Sofia Texeira",
+        "position": "Web Team",
+        "image": "media/students/sofia-texeira.jpg",
+        "gender": "F",
+        "id": "sofia-texeira-cfhg-web-developer-10",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Clayton Pykles",
+        "position": "Digital Media Team",
+        "image": "media/students/clayton-pykles.jpg",
+        "gender": "M",
+        "id": "clayton-pykles-media-production-specialist-12",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Ivan Morais",
+        "position": "Projects Team",
+        "image": "media/students/ivan-morais.jpg",
+        "gender": "M",
+        "id": "ivan-morais-graphic-designer-13",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Dalton Dunn",
+        "position": "Projects Team",
+        "image": "media/students/dalton-dunn.jpg",
+        "gender": "M",
+        "id": "dalton-dunn-cybersecurity-systems-technician-14",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Jason Kooyman",
+        "position": "Tech Team",
+        "image": "media/students/jason-kooyman.jpg",
+        "gender": "M",
+        "id": "jason-kooyman-it-specialist-15",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Amy Welling",
+        "position": "Lab Team",
+        "image": "media/students/amy-welling.jpg",
+        "gender": "F",
+        "id": "amy-welling-lab-assistant-16",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Sofia Bushlaeva",
+        "position": "Projects Team",
+        "image": "media/students/sofia-bushlaeva.jpg",
+        "gender": "F",
+        "id": "sofia-bushlaeva-graphic-designer-17",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Talmage Sell",
+        "position": "Digital Media Team",
+        "image": "media/students/talmage-sell.jpg",
+        "gender": "M",
+        "id": "talmage-sell-media-production-specialist-18",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Adam Blake",
+        "position": "Projects Team",
+        "image": "media/students/adam-blake.jpg",
+        "gender": "M",
+        "id": "adam-blake-cybersecurity-systems-technician-20",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Ella Jones",
+        "position": "Projects Team",
+        "image": "media/students/ella-jones.jpg",
+        "gender": "F",
+        "id": "ella-jones-it-project-assistant-21",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Jacob Lee",
+        "position": "Tech Team",
+        "image": "media/students/jacob-lee.jpg",
+        "gender": "M",
+        "id": "jacob-lee-lead-it-specialist-22",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "I love jiujitsu"
+        }
+    },
+    {
+        "name": "Libby Tanner",
+        "position": "Web Team",
+        "image": "media/students/libby-tanner.jpg",
+        "gender": "F",
+        "id": "libby-tanner-fhss-web-developer-23",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Aubrey Chan",
+        "position": "Front Desk Team",
+        "image": "media/students/aubrey-chan.jpg",
+        "gender": "F",
+        "id": "aubrey-chan-office-specialist-ii-24",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Front Desk Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Carson Chadwick",
+        "position": "Web Team",
+        "image": "media/students/carson-chadwick.jpg",
+        "gender": "M",
+        "id": "carson-chadwick-cfhg-web-developer-25",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Joseph Tew",
+        "position": "Web Team",
+        "image": "media/students/joseph-tew.jpg",
+        "gender": "M",
+        "id": "joseph-tew-cfhg-web-developer-26",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Spencer Hogan",
+        "position": "Lab Team",
+        "image": "media/students/spencer-hogan.jpg",
+        "gender": "M",
+        "id": "spencer-hogan-lab-assistant-27",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Brandon Monson",
+        "position": "Web Team",
+        "image": "media/students/brandon-monson.png",
+        "gender": "M",
+        "id": "brandon-monson-fhss-web-developer-28",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Nathan Hacking",
+        "position": "Tech Team",
+        "image": "media/students/nathan-hacking.jpg",
+        "gender": "M",
+        "id": "nathan-hacking-it-specialist-29",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Arianne Blad",
+        "position": "Front Desk Team",
+        "image": "media/students/arianne-blad.jpg",
+        "gender": "F",
+        "id": "arianne-blad-office-specialist-ii-30",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Front Desk Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Conner Hibbert",
+        "position": "Tech Team",
+        "image": "media/students/conner-hibbert.jpg",
+        "gender": "M",
+        "id": "conner-hibbert-it-specialist-31",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Joseph Jolley",
+        "position": "Digital Media Team",
+        "image": "media/students/joseph-jolley.jpg",
+        "gender": "M",
+        "id": "joseph-jolley-media-production-specialist-composer-32",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Josh Cruze",
+        "position": "Web Team",
+        "image": "media/students/josh-cruze.jpg",
+        "gender": "M",
+        "id": "josh-cruze-cfhg-web-developer-33",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Carter Traveller",
+        "position": "Tech Team",
+        "image": "media/students/carter-traveller.jpg",
+        "gender": "M",
+        "id": "carter-traveller-it-specialist-34",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Nathan Simms",
+        "position": "Projects Team",
+        "image": "media/students/nathan-simms.jpg",
+        "gender": "M",
+        "id": "nathan-simms-cybersecurity-systems-technician-35",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Lily Nahoopii",
+        "position": "Web Team",
+        "image": "media/students/lily-nahoopii.jpg",
+        "gender": "F",
+        "id": "lily-nahoopii-fhss-web-developer-36",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Luke Stovall",
+        "position": "Lab Team",
+        "image": "media/students/luke-stovall.jpg",
+        "gender": "M",
+        "id": "luke-stovall-lab-assistant-37",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Ally Wright",
+        "position": "Digital Media Team",
+        "image": "media/students/ally-wright.jpg",
+        "gender": "F",
+        "id": "ally-wright-media-production-specialist-38",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Digital Media Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Sasha Burningham",
+        "position": "Projects Team",
+        "image": "media/students/sasha-burningham.jpg",
+        "gender": "F",
+        "id": "sasha-burningham-it-project-assistant-39",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Amelia Skouson",
+        "position": "Projects Team",
+        "image": "media/students/amelia-skouson.jpg",
+        "gender": "F",
+        "id": "amelia-skouson-graphic-designer-40",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Madeline Xu",
+        "position": "Web Team",
+        "image": "media/students/madeline-xu.jpg",
+        "gender": "F",
+        "id": "madeline-xu-web-content-specialist-41",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Christian Betts",
+        "position": "Projects Team",
+        "image": "media/students/christian-betts.jpg",
+        "gender": "M",
+        "id": "christian-betts-it-software-specialist-42",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Dallin Palmer",
+        "position": "Web Team",
+        "image": "media/students/dallin-palmer.png",
+        "gender": "M",
+        "id": "dallin-palmer-fhss-web-developer-43",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "James Clawson",
+        "position": "Projects Team",
+        "image": "media/students/james-clawson.jpg",
+        "gender": "M",
+        "id": "james-clawson-web-content-specialist-45",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Ryan Mortenson",
+        "position": "Lab Team",
+        "image": "media/students/ryan-mortenson.jpg",
+        "gender": "M",
+        "id": "ryan-mortenson-lab-assistant-47",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Michael Winder",
+        "position": "Lab Team",
+        "image": "media/students/michael-winder.jpg",
+        "gender": "M",
+        "id": "michael-winder-lab-assistant-48",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Matthew Earl",
+        "position": "Lab Team",
+        "image": "media/students/matthew-earl.jpg",
+        "gender": "M",
+        "id": "matthew-earl-lab-assistant-49",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Lab Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Shawn Hulme",
+        "position": "Tech Team",
+        "image": "media/students/shawn-hulme.jpg",
+        "gender": "M",
+        "id": "shawn-hulme-it-specialist-50",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Amanda Weller",
+        "position": "Projects Team",
+        "image": "media/students/amanda-weller.jpg",
+        "gender": "F",
+        "id": "amanda-weller-it-project-assistant-51",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Luke Banner",
+        "position": "Tech Team",
+        "image": "media/students/luke-banner.jpg",
+        "gender": "M",
+        "id": "luke-banner-it-specialist-52",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Tech Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Isaac Park",
+        "position": "Web Team",
+        "image": "media/students/isaac-park.jpg",
+        "gender": "M",
+        "id": "isaac-park-fhss-web-developer-53",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Jayden Brown",
+        "position": "Web Team",
+        "image": "media/students/jayden-brown.jpg",
+        "gender": "M",
+        "id": "jayden-brown-lead-student-54",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Web Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Annie Fox",
+        "position": "Front Desk Team",
+        "image": "media/students/annie-fox.jpg",
+        "gender": "F",
+        "id": "annie-fox-office-specialist-ii-55",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Front Desk Team",
+            "fun_fact": "TBD"
+        }
+    },
+    {
+        "name": "Stacey Stoliarova",
+        "position": "Projects Team",
+        "image": "media/students/stacey-stoliarova.jpg",
+        "gender": "F",
+        "id": "stacey-stoliarova-graphic-designer-i-57",
+        "groups": [
+            "student-employees"
+        ],
+        "values": {
+            "team": "Projects Team",
+            "fun_fact": "TBD"
+        }
+    }
+]

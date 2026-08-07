@@ -152,5 +152,57 @@
                 "filter_by_gender": false
             }
         ]
+    },
+    {
+        "id": "student-employees",
+        "label": "Student Employees",
+        "description": "Guess their name, team, and a fun fact from their photo",
+        "fields": [
+            {
+                "id": "photo",
+                "label": "Photo",
+                "type": "photo",
+                "required": false,
+                "shown": true,
+                "guessed": false,
+                "filter_by_gender": false
+            },
+            {
+                "id": "name",
+                "label": "Name",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": true
+            },
+            {
+                "id": "team",
+                "label": "Team",
+                "type": "text",
+                "required": true,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "fun_fact",
+                "label": "Fun Fact",
+                "type": "text",
+                "required": false,
+                "shown": false,
+                "guessed": true,
+                "filter_by_gender": false
+            },
+            {
+                "id": "gender",
+                "label": "Gender for Name Options",
+                "type": "gender",
+                "required": true,
+                "shown": false,
+                "guessed": false,
+                "filter_by_gender": false
+            }
+        ]
     }
 ]

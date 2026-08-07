@@ -235,15 +235,28 @@
             if (fieldId === 'position') return person.position || '';
             if (fieldId === 'gender') return person.gender || 'F';
             if (fieldId === 'photo') return person.image || '';
-            if (person.values && person.values[fieldId] != null) return String(person.values[fieldId]);
+            if (person.values && person.values[fieldId] != null) {
+                const value = String(person.values[fieldId]).trim();
+                if (value) return value;
+            }
+            if (fieldId.includes('-') || fieldId.includes('_')) {
+                const alt = fieldId.includes('-')
+                    ? fieldId.replace(/-/g, '_')
+                    : fieldId.replace(/_/g, '-');
+                if (person.values && person.values[alt] != null) {
+                    const value = String(person.values[alt]).trim();
+                    if (value) return value;
+                }
+            }
             if (fieldId === 'abbreviation') return person.position || '';
+            if (fieldId === 'fun_fact' || fieldId === 'fun-fact') return 'TBD';
             return '';
         }
 
-        function mergePracticeGuessFields() {
+        function mergePracticeGuessFields(groupIds = pracSelectedGroups) {
             const merged = [];
             const seen = new Set();
-            pracSelectedGroups.forEach(id => {
+            groupIds.forEach(id => {
                 const group = groupsCatalog.find(item => item.id === id);
                 const fields = Array.isArray(group?.fields) ? group.fields : [
                     { id: 'name', label: 'Name', type: 'text', guessed: true, filter_by_gender: true },
@@ -259,6 +272,14 @@
                 { id: 'name', label: 'Name', type: 'text', guessed: true, filter_by_gender: true },
                 { id: 'position', label: 'Position', type: 'text', guessed: true }
             ];
+        }
+
+        function getPersonQuizGroups(person, selectedGroups = pracSelectedGroups) {
+            const personGroups = Array.isArray(person?.groups) && person.groups.length
+                ? person.groups
+                : ['clients'];
+            const overlap = personGroups.filter(id => selectedGroups.includes(id));
+            return overlap.length > 0 ? overlap : personGroups;
         }
 
         function escapeAttr(value) {
@@ -588,7 +609,8 @@
             pracTarget = available[Math.floor(Math.random() * available.length)];
             pracUsedIds.push(pracTarget.id);
             updatePracticeMeta();
-            pracGuessFields = mergePracticeGuessFields();
+            const quizGroups = getPersonQuizGroups(pracTarget);
+            pracGuessFields = mergePracticeGuessFields(quizGroups);
             pracSelectedAnswers = {};
 
             const photo = document.getElementById('prac-photo');
@@ -602,19 +624,30 @@
             document.getElementById('prac-submit-btn').disabled = true;
             document.getElementById('prac-next-btn').classList.add('hidden');
 
+            const fieldPool = allPeople.filter(person => personInSelectedGroups(person, quizGroups));
             const optionsByField = {};
             pracGuessFields.forEach(field => {
                 const correct = getPersonFieldValue(pracTarget, field.id);
-                let sourcePool = pool;
+                let sourcePool = fieldPool;
                 if (field.filter_by_gender) {
                     const targetGender = getPersonFieldValue(pracTarget, 'gender') || 'F';
-                    const sameGender = pool.filter(person => (getPersonFieldValue(person, 'gender') || 'F') === targetGender);
+                    const sameGender = fieldPool.filter(person => (getPersonFieldValue(person, 'gender') || 'F') === targetGender);
                     if (sameGender.length >= 4) sourcePool = sameGender;
                 }
                 const distractors = shuffleUnique(
                     sourcePool.map(person => getPersonFieldValue(person, field.id)).filter(value => value && value !== correct)
                 ).slice(0, 3);
-                optionsByField[field.id] = shuffleUnique([correct, ...distractors].filter(Boolean));
+                let options = shuffleUnique([correct, ...distractors].filter(Boolean));
+                if (field.id === 'fun_fact' || field.id === 'fun-fact') {
+                    let n = 2;
+                    while (options.length < 4) {
+                        const filler = `TBD ${n}`;
+                        if (!options.includes(filler)) options.push(filler);
+                        n += 1;
+                    }
+                    options = shuffleUnique(options);
+                }
+                optionsByField[field.id] = options;
             });
 
             renderOptionSections('prac-options-fields', pracGuessFields, optionsByField, 'selectPracAnswer');

@@ -1,5 +1,16 @@
 [
-  
+  {
+    "team_name": "Jacob",
+    "score": 27002,
+    "questions": 60,
+    "rounds": 60,
+    "groups": [
+      "internal-staff",
+      "student-employees"
+    ],
+    "groups_key": "internal-staff+student-employees",
+    "recorded_at": "2026-08-07T22:35:30.363Z"
+  },
   {
     "team_name": "Jason (Identity theft is not a joke, Tyler! Millions of families suffer every year)",
     "score": 23214,
