@@ -1101,18 +1101,52 @@ function saveImportedRosterPhoto(photo, preferredRelativePath = '') {
   if (!photo || !photo.dataUrl) return '';
 
   const { ext, buffer } = parseDataUrlImage(photo.dataUrl);
+  return writeStudentMediaFile(buffer, ext, preferredRelativePath || photo.name || photo.filename || '');
+}
+
+function writeStudentMediaFile(buffer, ext, preferredRelativePath = '') {
   const preferredBase = photoBasename(preferredRelativePath);
   const preferredExt = path.extname(preferredBase);
-  const sourceName = photoBasename(photo.name || photo.filename || preferredBase);
-  const base = slugifyFileBase(preferredBase || sourceName);
+  const base = slugifyFileBase(preferredBase || 'photo');
   const finalExt = preferredExt && /^\.(png|jpe?g|gif|webp)$/i.test(preferredExt)
     ? preferredExt.toLowerCase().replace('.jpeg', '.jpg')
-    : ext;
+    : (ext || '.jpg');
   const filename = `${base}${finalExt === '.jpeg' ? '.jpg' : finalExt}`;
   const destDir = path.join(MEDIA_ROOT, 'students');
   fs.mkdirSync(destDir, { recursive: true });
   fs.writeFileSync(path.join(destDir, filename), buffer);
   return `media/students/${filename}`;
+}
+
+function extensionForImageMime(mimeType, fallbackName = '') {
+  const mime = String(mimeType || '').toLowerCase();
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/gif') return '.gif';
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return '.jpg';
+  const fromName = path.extname(photoBasename(fallbackName)).toLowerCase();
+  if (/^\.(png|jpe?g|gif|webp)$/.test(fromName)) {
+    return fromName === '.jpeg' ? '.jpg' : fromName;
+  }
+  return '.jpg';
+}
+
+function readRawBody(req, { maxBytes = MAX_IMPORT_BODY_BYTES } = {}) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error('Request body is too large.'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
 }
 
 function importStudentEmployeesFromCsv(data = {}) {
@@ -1128,6 +1162,7 @@ function importStudentEmployeesFromCsv(data = {}) {
     throw new Error('CSV has no data rows.');
   }
 
+  // Optional inline photos remain supported, but the UI uploads them separately first.
   const photos = Array.isArray(data.photos) ? data.photos : [];
   const photosByBasename = new Map();
   photos.forEach((photo) => {
@@ -1176,7 +1211,16 @@ function importStudentEmployeesFromCsv(data = {}) {
         image = mediaRelative;
         photosMatchedExisting += 1;
       } else {
-        warnings.push(`${name}: no photo found for ${csvPhotoKey || csvPhoto}.`);
+        const slugCandidates = ['.jpg', '.png', '.jpeg', '.webp'].map(
+          (ext) => `media/students/${slugifyFileBase(name)}${ext}`
+        );
+        const foundSlug = slugCandidates.find((candidate) => resolveMediaFile(candidate));
+        if (foundSlug) {
+          image = foundSlug;
+          photosMatchedExisting += 1;
+        } else {
+          warnings.push(`${name}: no photo found for ${csvPhotoKey || csvPhoto}.`);
+        }
       }
     } else {
       warnings.push(`${name}: CSV row has no photo path.`);
@@ -1457,9 +1501,37 @@ async function handleApi(req, res, url) {
     return sendJson(res, filterLeaderboard(entries, 'all').slice(0, LEADERBOARD_SIZE));
   }
 
-  const maxBytes = url.pathname === '/api/people/import'
+  const maxBytes = (
+    url.pathname === '/api/people/import'
+    || url.pathname === '/api/people/import/photo'
+  )
     ? MAX_IMPORT_BODY_BYTES
     : MAX_JSON_BODY_BYTES;
+
+  if (req.method === 'POST' && url.pathname === '/api/people/import/photo') {
+    requireManager(req, {});
+    const filename = String(
+      url.searchParams.get('name')
+      || url.searchParams.get('filename')
+      || req.headers['x-photo-name']
+      || ''
+    ).trim();
+    if (!filename) {
+      throw Object.assign(new Error('Photo filename is required.'), { status: 400 });
+    }
+    const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (contentType && !contentType.startsWith('image/')) {
+      throw Object.assign(new Error('Photo upload must be an image.'), { status: 400 });
+    }
+    const buffer = await readRawBody(req, { maxBytes: MAX_IMPORT_BODY_BYTES });
+    if (!buffer.length) {
+      throw Object.assign(new Error('Photo upload was empty.'), { status: 400 });
+    }
+    const ext = extensionForImageMime(contentType, filename);
+    const image = writeStudentMediaFile(buffer, ext, filename);
+    return sendJson(res, { success: true, image });
+  }
+
   const data = await readBody(req, { maxBytes });
 
   if (req.method === 'POST' && url.pathname === '/api/manager/login') {
