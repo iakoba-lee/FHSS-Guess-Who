@@ -100,8 +100,41 @@
                                 <p>Edit a quiz group to update its details and add roster entries for that pool.</p>
                             </div>
                             <div class="section-header-actions">
+                                <button type="button" class="small-btn subtle-btn" onclick="toggleImportPanel()">Import Students</button>
                                 <button type="button" class="small-btn subtle-btn" onclick="openAddGroupEditor()">Add Group</button>
                             </div>
+                        </div>
+
+                        <div class="import-panel hidden" id="import-panel">
+                            <div class="import-panel-header">
+                                <div>
+                                    <h3>Import Student Employees</h3>
+                                    <p>Upload the CSV roster and a folder of photos. Filenames should match the Photo column (e.g. <code>natania-michael.jpg</code>).</p>
+                                </div>
+                                <button type="button" class="small-btn subtle-btn" onclick="toggleImportPanel(false)">Close</button>
+                            </div>
+                            <form id="import-form" class="import-form">
+                                <div class="form-grid">
+                                    <label>
+                                        CSV file
+                                        <input type="file" id="import-csv" accept=".csv,text/csv" required />
+                                    </label>
+                                    <label>
+                                        Photos folder
+                                        <input type="file" id="import-photos" accept="image/png,image/jpeg,image/gif,image/webp" webkitdirectory multiple />
+                                        <span class="field-hint">Optional if photos are already on the server.</span>
+                                    </label>
+                                </div>
+                                <label class="import-replace-option">
+                                    <input type="checkbox" id="import-replace" checked />
+                                    Replace the current Student Employees roster
+                                </label>
+                                <div class="form-actions">
+                                    <button type="submit" id="import-submit">Import Roster</button>
+                                    <span id="import-progress" class="import-progress"></span>
+                                </div>
+                                <p id="import-message" class="staff-message"></p>
+                            </form>
                         </div>
 
                         <div class="group-manager" id="group-manager">
@@ -1265,6 +1298,7 @@
             sessionStorage.removeItem('fhssManagerPassword');
             document.getElementById('manager-password').value = '';
             staffPeople = [];
+            toggleImportPanel(false);
             setManagerAuthenticated(false);
         }
 
@@ -1737,6 +1771,128 @@
             };
             reader.readAsDataURL(file);
         }
+
+        function setImportMessage(message, isError = false) {
+            const el = document.getElementById('import-message');
+            if (!el) return;
+            el.innerText = message;
+            el.classList.toggle('error', isError);
+        }
+
+        function toggleImportPanel(forceOpen) {
+            const panel = document.getElementById('import-panel');
+            if (!panel) return;
+            const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !shouldOpen);
+            if (shouldOpen) setImportMessage('');
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('Unable to read CSV file.'));
+                reader.readAsText(file);
+            });
+        }
+
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error(`Unable to read photo ${file.name}.`));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function isImageFile(file) {
+            if (file.type && file.type.startsWith('image/')) return true;
+            return /\.(png|jpe?g|gif|webp)$/i.test(file.name || '');
+        }
+
+        async function buildImportPhotos(fileList) {
+            const files = [...(fileList || [])].filter(isImageFile);
+            const photos = [];
+            for (let i = 0; i < files.length; i += 1) {
+                const file = files[i];
+                const progress = document.getElementById('import-progress');
+                if (progress) progress.textContent = `Reading photos ${i + 1}/${files.length}…`;
+                const dataUrl = await readFileAsDataUrl(file);
+                photos.push({
+                    name: file.name,
+                    filename: file.name,
+                    dataUrl
+                });
+            }
+            return photos;
+        }
+
+        document.getElementById('import-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!managerPassword) {
+                setImportMessage('Manager login is required.', true);
+                return;
+            }
+
+            const csvInput = document.getElementById('import-csv');
+            const photosInput = document.getElementById('import-photos');
+            const submitBtn = document.getElementById('import-submit');
+            const progress = document.getElementById('import-progress');
+            const csvFile = csvInput.files?.[0];
+            if (!csvFile) {
+                setImportMessage('Choose a CSV file first.', true);
+                return;
+            }
+
+            submitBtn.disabled = true;
+            setImportMessage('');
+            if (progress) progress.textContent = 'Reading CSV…';
+
+            try {
+                const csv = await readFileAsText(csvFile);
+                const photos = await buildImportPhotos(photosInput.files);
+                if (progress) progress.textContent = 'Uploading import…';
+
+                const response = await fetch('/api/people/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...managerHeaders()
+                    },
+                    body: JSON.stringify({
+                        csv,
+                        photos,
+                        replace: document.getElementById('import-replace').checked
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Import failed.');
+
+                const warningText = Array.isArray(result.warnings) && result.warnings.length
+                    ? ` ${result.warnings.length} warning(s).`
+                    : '';
+                setImportMessage(
+                    `Imported ${result.imported} people`
+                    + (result.replaced ? ' (replaced roster)' : '')
+                    + `, saved ${result.photos_saved || 0} photo(s)`
+                    + (result.photos_reused ? `, reused ${result.photos_reused}` : '')
+                    + `.${warningText}`
+                );
+                if (Array.isArray(result.warnings) && result.warnings.length) {
+                    console.warn('Student import warnings:', result.warnings);
+                }
+
+                csvInput.value = '';
+                photosInput.value = '';
+                staffFilterGroup = 'student-employees';
+                await loadStaff();
+            } catch (error) {
+                setImportMessage(error.message || 'Import failed.', true);
+            } finally {
+                submitBtn.disabled = false;
+                if (progress) progress.textContent = '';
+            }
+        });
 
         document.getElementById('staff-form').addEventListener('submit', async event => {
             event.preventDefault();

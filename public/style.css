@@ -1977,6 +1977,56 @@ label.group-option .group-option-count {
   justify-content: flex-end;
 }
 
+.import-panel {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.import-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.import-panel-header h3 {
+  margin: 0 0 0.35rem;
+}
+
+.import-panel-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.import-panel-header code {
+  font-size: 0.85em;
+}
+
+.import-form .field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.import-replace-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.import-progress {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .section-header h2 {
   margin-bottom: 0.25rem;
 }

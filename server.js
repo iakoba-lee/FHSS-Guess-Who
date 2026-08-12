@@ -22,7 +22,15 @@ const LEADERBOARD_FILE = path.join(DATA_ROOT, 'leaderboard.json');
 const UPLOAD_DIR = DATA_DIR
   ? path.join(DATA_DIR, 'uploads')
   : path.join(ROOT, 'public', 'uploads');
+// Roster photos (media/students, etc.) persist on the data volume in Docker.
+const MEDIA_ROOT = DATA_DIR
+  ? path.join(DATA_DIR, 'media')
+  : path.join(ROOT, 'public', 'media');
+const PUBLIC_MEDIA_ROOT = path.join(ROOT, 'public', 'media');
 const LEADERBOARD_SIZE = 10;
+const IMPORT_GROUP_ID = 'student-employees';
+const MAX_JSON_BODY_BYTES = 12 * 1024 * 1024;
+const MAX_IMPORT_BODY_BYTES = 100 * 1024 * 1024;
 
 function peopleFileFor(groupId) {
   return path.join(DATA_ROOT, `${groupId}.json`);
@@ -600,6 +608,7 @@ function withIds(records) {
 function ensureDataDir() {
   fs.mkdirSync(DATA_ROOT, { recursive: true });
   if (DATA_DIR) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(path.join(MEDIA_ROOT, 'students'), { recursive: true });
 
   // Only seed into a separate DATA_DIR volume (Docker). Local already uses repo data/.
   if (DATA_DIR && path.resolve(DATA_DIR) !== path.resolve(SEED_DATA_DIR)) {
@@ -960,15 +969,11 @@ function sanitizePerson(input) {
   return { name, position, image, gender, groups, values };
 }
 
-function saveUploadedPhoto(photo) {
-  if (!photo || !photo.dataUrl) return '';
-
-  const match = String(photo.dataUrl).match(/^data:(image\/(?:png|jpeg|jpg|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
+function parseDataUrlImage(dataUrl) {
+  const match = String(dataUrl || '').match(/^data:(image\/(?:png|jpeg|jpg|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!match) {
     throw new Error('Photo must be a PNG, JPEG, GIF, or WebP image.');
   }
-
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   const mime = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
   const ext = {
     'image/png': '.png',
@@ -976,11 +981,271 @@ function saveUploadedPhoto(photo) {
     'image/gif': '.gif',
     'image/webp': '.webp'
   }[mime];
+  return { mime, ext, buffer: Buffer.from(match[2], 'base64') };
+}
+
+function saveUploadedPhoto(photo) {
+  if (!photo || !photo.dataUrl) return '';
+
+  const { ext, buffer } = parseDataUrlImage(photo.dataUrl);
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   const baseName = String(photo.name || 'staff-photo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'staff-photo';
   const filename = `${Date.now()}-${baseName}${ext}`;
   const diskPath = path.join(UPLOAD_DIR, filename);
-  fs.writeFileSync(diskPath, Buffer.from(match[2], 'base64'));
+  fs.writeFileSync(diskPath, buffer);
   return `uploads/${filename}`;
+}
+
+function slugifyFileBase(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'photo';
+}
+
+function photoBasename(value) {
+  return path.basename(String(value || '').replace(/\\/g, '/')).toLowerCase();
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+  const input = String(text || '').replace(/^\uFEFF/, '');
+
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i];
+    const next = input[i + 1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+      continue;
+    }
+    if (ch === ',') {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+    if (ch === '\n') {
+      row.push(cell);
+      if (row.some((value) => String(value).trim() !== '')) rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+    if (ch === '\r') continue;
+    cell += ch;
+  }
+  row.push(cell);
+  if (row.some((value) => String(value).trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function csvRowsToObjects(rows) {
+  if (!rows.length) return [];
+  const headers = rows[0].map((header) => String(header || '').trim().toLowerCase());
+  return rows.slice(1).map((cells) => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      if (!header) return;
+      obj[header] = String(cells[index] ?? '').trim();
+    });
+    return obj;
+  });
+}
+
+function ensureImportGroup() {
+  if (groupIds.has(IMPORT_GROUP_ID)) return getGroupById(IMPORT_GROUP_ID);
+  const group = sanitizeGroup({
+    id: IMPORT_GROUP_ID,
+    label: 'Student Employees',
+    description: 'Guess their name, team, and a fun fact from their photo',
+    fields: defaultFieldsForGroupId(IMPORT_GROUP_ID)
+  }, { requireId: true });
+  groups.push(group);
+  rebuildGroupIds();
+  saveGroups();
+  ensurePeopleFileForGroup(IMPORT_GROUP_ID);
+  return group;
+}
+
+function resolveMediaFile(relativeMediaPath) {
+  const cleaned = String(relativeMediaPath || '')
+    .replace(/^\/+/, '')
+    .replace(/^media\//, '');
+  if (!cleaned || cleaned.includes('..')) return null;
+
+  const candidates = [
+    path.join(MEDIA_ROOT, cleaned),
+    path.join(PUBLIC_MEDIA_ROOT, cleaned)
+  ];
+  for (const filePath of candidates) {
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) return filePath;
+  }
+  return null;
+}
+
+function saveImportedRosterPhoto(photo, preferredRelativePath = '') {
+  if (!photo || !photo.dataUrl) return '';
+
+  const { ext, buffer } = parseDataUrlImage(photo.dataUrl);
+  const preferredBase = photoBasename(preferredRelativePath);
+  const preferredExt = path.extname(preferredBase);
+  const sourceName = photoBasename(photo.name || photo.filename || preferredBase);
+  const base = slugifyFileBase(preferredBase || sourceName);
+  const finalExt = preferredExt && /^\.(png|jpe?g|gif|webp)$/i.test(preferredExt)
+    ? preferredExt.toLowerCase().replace('.jpeg', '.jpg')
+    : ext;
+  const filename = `${base}${finalExt === '.jpeg' ? '.jpg' : finalExt}`;
+  const destDir = path.join(MEDIA_ROOT, 'students');
+  fs.mkdirSync(destDir, { recursive: true });
+  fs.writeFileSync(path.join(destDir, filename), buffer);
+  return `media/students/${filename}`;
+}
+
+function importStudentEmployeesFromCsv(data = {}) {
+  ensureImportGroup();
+
+  const csvText = String(data.csv || data.csv_text || '');
+  if (!csvText.trim()) {
+    throw new Error('CSV content is required.');
+  }
+
+  const rows = csvRowsToObjects(parseCsv(csvText));
+  if (rows.length === 0) {
+    throw new Error('CSV has no data rows.');
+  }
+
+  const photos = Array.isArray(data.photos) ? data.photos : [];
+  const photosByBasename = new Map();
+  photos.forEach((photo) => {
+    const key = photoBasename(photo?.name || photo?.filename || '');
+    if (key) photosByBasename.set(key, photo);
+  });
+
+  const existingInGroup = people.filter((person) => personInGroups(person, [IMPORT_GROUP_ID]));
+  const existingByName = new Map(
+    existingInGroup.map((person) => [String(person.name || '').trim().toLowerCase(), person])
+  );
+
+  const imported = [];
+  const warnings = [];
+  let photosSaved = 0;
+  let photosMatchedExisting = 0;
+
+  rows.forEach((row, index) => {
+    const name = String(row.name || '').trim();
+    if (!name) {
+      warnings.push(`Row ${index + 2}: skipped (missing name).`);
+      return;
+    }
+
+    const team = String(row.team || row.position || '').trim() || '—';
+    const funFact = String(row['fun fact'] || row.fun_fact || row.funfact || '').trim() || 'TBD';
+    const title = String(row.title || '').trim();
+    const csvPhoto = String(row.photo || row.image || '').trim();
+    const csvPhotoKey = photoBasename(csvPhoto);
+    const matchedUpload = (csvPhotoKey && photosByBasename.get(csvPhotoKey))
+      || photosByBasename.get(`${slugifyFileBase(name)}.jpg`)
+      || photosByBasename.get(`${slugifyFileBase(name)}.png`)
+      || photosByBasename.get(`${slugifyFileBase(name)}.jpeg`)
+      || photosByBasename.get(`${slugifyFileBase(name)}.webp`);
+
+    let image = '';
+    if (matchedUpload) {
+      image = saveImportedRosterPhoto(matchedUpload, csvPhoto || matchedUpload.name);
+      photosSaved += 1;
+    } else if (csvPhoto) {
+      const normalized = csvPhoto.replace(/^\/+/, '');
+      const mediaRelative = normalized.startsWith('media/')
+        ? normalized
+        : `media/students/${photoBasename(normalized)}`;
+      if (resolveMediaFile(mediaRelative)) {
+        image = mediaRelative;
+        photosMatchedExisting += 1;
+      } else {
+        warnings.push(`${name}: no photo found for ${csvPhotoKey || csvPhoto}.`);
+      }
+    } else {
+      warnings.push(`${name}: CSV row has no photo path.`);
+    }
+
+    const previous = existingByName.get(name.toLowerCase());
+    const person = sanitizePerson({
+      name,
+      position: team,
+      gender: previous?.gender || 'F',
+      image,
+      groups: [IMPORT_GROUP_ID],
+      values: {
+        team,
+        fun_fact: funFact,
+        ...(title ? { title } : {})
+      }
+    });
+    person.id = makeId(person, imported.length);
+    imported.push(person);
+  });
+
+  if (imported.length === 0) {
+    throw new Error('No valid people found in the CSV.');
+  }
+
+  const replace = data.replace !== false;
+  const kept = replace
+    ? people.filter((person) => !personInGroups(person, [IMPORT_GROUP_ID]))
+    : people;
+
+  if (!replace) {
+    const existingIds = new Set(kept.map((person) => person.id));
+    imported.forEach((person) => {
+      const prior = existingByName.get(person.name.toLowerCase());
+      if (prior) {
+        const idx = kept.findIndex((entry) => entry.id === prior.id);
+        if (idx !== -1) {
+          kept[idx] = { ...person, id: prior.id, gender: prior.gender || person.gender };
+          return;
+        }
+      }
+      let id = person.id;
+      let suffix = 2;
+      while (existingIds.has(id)) {
+        id = `${person.id}-${suffix}`;
+        suffix += 1;
+      }
+      person.id = id;
+      existingIds.add(id);
+      kept.push(person);
+    });
+    people = withIds(kept);
+  } else {
+    people = withIds([...kept, ...imported]);
+  }
+
+  savePeople();
+
+  return {
+    success: true,
+    group_id: IMPORT_GROUP_ID,
+    imported: imported.length,
+    replaced: replace,
+    photos_saved: photosSaved,
+    photos_reused: photosMatchedExisting,
+    warnings,
+    groups: groupsWithCounts()
+  };
 }
 
 function generateFieldOptions(correctPerson, pool = people, guessFields = []) {
@@ -1081,12 +1346,12 @@ function sendJson(res, data, status = 200) {
   res.end(body);
 }
 
-function readBody(req) {
+function readBody(req, { maxBytes = MAX_JSON_BODY_BYTES } = {}) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 12 * 1024 * 1024) {
+      if (body.length > maxBytes) {
         reject(new Error('Request body is too large.'));
         req.destroy();
       }
@@ -1192,7 +1457,10 @@ async function handleApi(req, res, url) {
     return sendJson(res, filterLeaderboard(entries, 'all').slice(0, LEADERBOARD_SIZE));
   }
 
-  const data = await readBody(req);
+  const maxBytes = url.pathname === '/api/people/import'
+    ? MAX_IMPORT_BODY_BYTES
+    : MAX_JSON_BODY_BYTES;
+  const data = await readBody(req, { maxBytes });
 
   if (req.method === 'POST' && url.pathname === '/api/manager/login') {
     requireManager(req, data);
@@ -1479,6 +1747,12 @@ async function handleApi(req, res, url) {
     return sendJson(res, { success: true, person: people[people.length - 1] }, 201);
   }
 
+  if (req.method === 'POST' && url.pathname === '/api/people/import') {
+    requireManager(req, data);
+    const result = importStudentEmployeesFromCsv(data);
+    return sendJson(res, result);
+  }
+
   const personMatch = url.pathname.match(/^\/api\/people\/([^/]+)$/);
   if (personMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
     const id = decodeURIComponent(personMatch[1]);
@@ -1579,10 +1853,23 @@ function sendFile(res, filePath) {
   });
 }
 
+function resolveMediaPath(urlPath) {
+  const relative = decodeURIComponent(urlPath).replace(/^\/media\//, '');
+  if (!relative || relative.includes('..')) return null;
+  return resolveMediaFile(`media/${relative}`);
+}
+
 function serveStatic(req, res, url) {
   if (url.pathname.startsWith('/uploads/')) {
     const uploadPath = resolveUploadPath(url.pathname);
     if (uploadPath) return sendFile(res, uploadPath);
+    res.writeHead(404);
+    return res.end('Not found');
+  }
+
+  if (url.pathname.startsWith('/media/')) {
+    const mediaPath = resolveMediaPath(url.pathname);
+    if (mediaPath) return sendFile(res, mediaPath);
     res.writeHead(404);
     return res.end('Not found');
   }
