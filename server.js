@@ -1118,6 +1118,244 @@ function writeStudentMediaFile(buffer, ext, preferredRelativePath = '') {
   return `media/students/${filename}`;
 }
 
+const STUDENT_PHOTO_ALIASES = {
+  'sofia texeira': ['sofia silva'],
+  'arianne blad': ['annie blad'],
+  'madeline xu': ['madeline charles']
+};
+
+const PHOTO_JUNK_TOKENS = new Set([
+  'for', 'website', 'web', 'print', 'headshot', 'head', 'shot',
+  'img', 'image', 'photo', 'portrait', 'copy', 'final', 'edited',
+  'new', 'dsc'
+]);
+
+function tokenizePhotoName(value) {
+  return String(value || '')
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function significantPhotoTokens(tokens) {
+  return tokens.filter((token) => (
+    token.length >= 2
+    && !/^\d+$/.test(token)
+    && !PHOTO_JUNK_TOKENS.has(token)
+  ));
+}
+
+function tokenEditDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const prev = new Array(b.length + 1);
+  const next = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    next[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      next[j] = Math.min(prev[j] + 1, next[j - 1] + 1, prev[j - 1] + cost);
+    }
+    for (let j = 0; j <= b.length; j += 1) prev[j] = next[j];
+  }
+  return prev[b.length];
+}
+
+function tokensFuzzyEqual(a, b) {
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))) return true;
+  if (Math.min(a.length, b.length) >= 5 && tokenEditDistance(a, b) <= 1) return true;
+  return false;
+}
+
+function compactPhotoKey(filename) {
+  return photoBasename(filename)
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function stripPhotoJunkCompact(value) {
+  let remainder = String(value || '');
+  const junk = ['website', 'headshot', 'print', 'photo', 'image', 'web', 'new'];
+  let changed = true;
+  while (changed && remainder) {
+    changed = false;
+    for (const token of junk) {
+      if (remainder.endsWith(token)) {
+        remainder = remainder.slice(0, -token.length);
+        changed = true;
+      }
+    }
+    const next = remainder.replace(/\d+$/, '');
+    if (next !== remainder) {
+      remainder = next;
+      changed = true;
+    }
+  }
+  return remainder;
+}
+
+function compactScoreForPerson(nameTokens, filename) {
+  if (!nameTokens.length) return 0;
+  const fileCompact = compactPhotoKey(filename);
+  if (!fileCompact) return 0;
+  const first = nameTokens[0];
+  const rest = nameTokens.slice(1);
+  let firstLen = 0;
+  if (fileCompact.startsWith(first)) {
+    firstLen = first.length;
+  } else {
+    for (let len = Math.max(4, first.length - 1); len <= first.length + 1 && len <= fileCompact.length; len += 1) {
+      if (tokensFuzzyEqual(fileCompact.slice(0, len), first)) {
+        firstLen = len;
+        break;
+      }
+    }
+  }
+  if (!firstLen) return 0;
+
+  const remainder = stripPhotoJunkCompact(fileCompact.slice(firstLen));
+  const raw = tokenizePhotoName(filename).concat(fileCompact);
+  let score = 18;
+  if (raw.some((token) => token === 'web' || token === 'website') || fileCompact.includes('web')) score += 8;
+  if (raw.includes('print') || fileCompact.includes('print')) score -= 5;
+  if (!rest.length) return remainder ? 0 : score;
+
+  const restHit = rest.some((token) => (
+    remainder === token
+    || remainder.startsWith(token)
+    || (token.startsWith(remainder) && remainder.length >= 4)
+    || remainder.includes(token)
+    || tokensFuzzyEqual(remainder, token)
+  ));
+  return restHit ? score + 6 : 0;
+}
+
+function scoreOnePhotoName(personName, filename) {
+  const nameTokens = significantPhotoTokens(tokenizePhotoName(personName));
+  const rawFileTokens = tokenizePhotoName(filename);
+  const fileTokens = significantPhotoTokens(rawFileTokens);
+  if (!nameTokens.length) return 0;
+
+  let score = 0;
+  if (fileTokens.length) {
+    const first = nameTokens[0];
+    const rest = nameTokens.slice(1);
+    if (fileTokens.some((token) => tokensFuzzyEqual(token, first))) {
+      const restMatches = rest.filter((token) => fileTokens.some((fileToken) => tokensFuzzyEqual(fileToken, token)));
+      if (!rest.length || restMatches.length > 0) {
+        score = 20 + restMatches.length * 8;
+        if (rawFileTokens.includes('web') || rawFileTokens.includes('website')) score += 10;
+        if (rawFileTokens.includes('print')) score -= 6;
+        score -= Math.max(0, fileTokens.length - nameTokens.length) * 2;
+      }
+    }
+  }
+
+  return Math.max(score, compactScoreForPerson(nameTokens, filename));
+}
+
+function scorePhotoForPerson(personName, filename) {
+  const names = [
+    personName,
+    ...(STUDENT_PHOTO_ALIASES[String(personName || '').trim().toLowerCase()] || [])
+  ];
+  return names.reduce((best, name) => Math.max(best, scoreOnePhotoName(name, filename)), 0);
+}
+
+function listStudentMediaFiles() {
+  const dirs = [
+    path.join(MEDIA_ROOT, 'students'),
+    path.join(PUBLIC_MEDIA_ROOT, 'students')
+  ];
+  const seen = new Set();
+  const files = [];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    let names = [];
+    try {
+      names = fs.readdirSync(dir);
+    } catch (error) {
+      continue;
+    }
+    for (const name of names) {
+      if (!/\.(png|jpe?g|gif|webp)$/i.test(name)) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      const full = path.join(dir, name);
+      try {
+        if (!fs.statSync(full).isFile()) continue;
+      } catch (error) {
+        continue;
+      }
+      seen.add(key);
+      files.push({
+        name,
+        full,
+        relative: `media/students/${name}`
+      });
+    }
+  }
+  return files;
+}
+
+function copyStudentPhotoToCanonical(sourceFullPath, preferredRelativePath) {
+  const sourceExt = path.extname(sourceFullPath).toLowerCase().replace('.jpeg', '.jpg') || '.jpg';
+  const preferredExt = path.extname(photoBasename(preferredRelativePath)).toLowerCase().replace('.jpeg', '.jpg');
+  const ext = preferredExt && /^\.(png|jpg|gif|webp)$/.test(preferredExt) ? preferredExt : sourceExt;
+  const base = slugifyFileBase(preferredRelativePath || path.basename(sourceFullPath));
+  const destDir = path.join(MEDIA_ROOT, 'students');
+  fs.mkdirSync(destDir, { recursive: true });
+  const destName = `${base}${ext}`;
+  const destFull = path.join(destDir, destName);
+  if (path.resolve(sourceFullPath) !== path.resolve(destFull)) {
+    fs.copyFileSync(sourceFullPath, destFull);
+  }
+  return `media/students/${destName}`;
+}
+
+function findExistingStudentPhoto(personName, csvPhotoPath, usedRelatives = new Set()) {
+  const candidates = [];
+  if (csvPhotoPath) {
+    const normalized = String(csvPhotoPath).replace(/^\/+/, '');
+    candidates.push(normalized.startsWith('media/') ? normalized : `media/students/${photoBasename(normalized)}`);
+  }
+  const slug = slugifyFileBase(personName);
+  ['.jpg', '.jpeg', '.png', '.webp', '.gif'].forEach((ext) => {
+    candidates.push(`media/students/${slug}${ext}`);
+  });
+
+  for (const relative of candidates) {
+    if (usedRelatives.has(relative)) continue;
+    if (resolveMediaFile(relative)) {
+      usedRelatives.add(relative);
+      return relative;
+    }
+  }
+
+  const available = listStudentMediaFiles().filter((file) => !usedRelatives.has(file.relative));
+  let best = null;
+  available.forEach((file) => {
+    const score = scorePhotoForPerson(personName, file.name);
+    if (score <= 0) return;
+    if (!best || score > best.score) best = { ...file, score };
+  });
+  if (!best) return '';
+
+  usedRelatives.add(best.relative);
+  const canonicalPreferred = csvPhotoPath || `media/students/${slug}.jpg`;
+  const canonical = copyStudentPhotoToCanonical(best.full, canonicalPreferred);
+  usedRelatives.add(canonical);
+  return canonical;
+}
+
 function extensionForImageMime(mimeType, fallbackName = '') {
   const mime = String(mimeType || '').toLowerCase();
   if (mime === 'image/png') return '.png';
@@ -1177,6 +1415,7 @@ function importStudentEmployeesFromCsv(data = {}) {
 
   const imported = [];
   const warnings = [];
+  const usedPhotoRelatives = new Set();
   let photosSaved = 0;
   let photosMatchedExisting = 0;
 
@@ -1202,28 +1441,15 @@ function importStudentEmployeesFromCsv(data = {}) {
     if (matchedUpload) {
       image = saveImportedRosterPhoto(matchedUpload, csvPhoto || matchedUpload.name);
       photosSaved += 1;
-    } else if (csvPhoto) {
-      const normalized = csvPhoto.replace(/^\/+/, '');
-      const mediaRelative = normalized.startsWith('media/')
-        ? normalized
-        : `media/students/${photoBasename(normalized)}`;
-      if (resolveMediaFile(mediaRelative)) {
-        image = mediaRelative;
-        photosMatchedExisting += 1;
-      } else {
-        const slugCandidates = ['.jpg', '.png', '.jpeg', '.webp'].map(
-          (ext) => `media/students/${slugifyFileBase(name)}${ext}`
-        );
-        const foundSlug = slugCandidates.find((candidate) => resolveMediaFile(candidate));
-        if (foundSlug) {
-          image = foundSlug;
-          photosMatchedExisting += 1;
-        } else {
-          warnings.push(`${name}: no photo found for ${csvPhotoKey || csvPhoto}.`);
-        }
-      }
+      if (image) usedPhotoRelatives.add(image);
     } else {
-      warnings.push(`${name}: CSV row has no photo path.`);
+      image = findExistingStudentPhoto(name, csvPhoto, usedPhotoRelatives);
+      if (image) {
+        photosMatchedExisting += 1;
+        usedPhotoRelatives.add(image);
+      } else {
+        warnings.push(`${name}: no photo found for ${csvPhotoKey || csvPhoto || 'this person'}.`);
+      }
     }
 
     const previous = existingByName.get(name.toLowerCase());
